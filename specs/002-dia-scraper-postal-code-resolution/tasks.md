@@ -135,3 +135,16 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Hacer:** README (quitar la limitación del CP por defecto, añadir el `404` y las variables nuevas); `.env.example` (si el agente no puede escribirlo, pedírselo al usuario); prueba manual contra Dia real: `08001` (CP nuevo, `PUT` + búsqueda), `08001` otro término (sin `PUT`), `35001` (`404`) y `35001` otra vez (sin peticiones). Unas 3–4 peticiones reales, anotadas aquí.
 - **Depende:** T12
 - **RF:** RNF-5, criterios de finalización. **Fin de PR4.**
+
+#### Resultado de la prueba manual (2026-10-07)
+
+App real (`create_app()` + `lifespan` + `DiaSession` con su cliente real) contra `https://www.dia.es`, Redis sustituido por `FakeAsyncRedis` (sin Redis local). Peticiones contadas con un `event_hook` en cada cliente de sesión.
+
+| Petición a la API | Resultado | Peticiones a Dia |
+|---|---|---|
+| `08001`, `agua`, `page_size=5` | `200` en 710 ms, `warehouse: "08001"`, `total_results: 312` (el mismo total que Barcelona en la Fase 0 §3, frente a 323 en Madrid) | `PUT save-shipping-address?new_postal_code=08001` + búsqueda (`page_size=30`, plan-D17 de la 001) |
+| `08001`, `leche` | `200` en 316 ms, `total_results: 406` | solo la búsqueda |
+| `35001`, `agua` | `404 Postal code not served by Dia` en 315 ms | `PUT` (respondió `206 no_service`) |
+| `35001`, `leche` | `404` en 2 ms | ninguna (cache negativa) |
+
+Total: 4 peticiones reales, sin bloqueos de Akamai. Claves en Redis al final: `postal_code:not_served:35001`, `search:08001:agua:1:5`, `search:08001:leche:1:5`.

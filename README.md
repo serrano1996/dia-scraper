@@ -4,8 +4,8 @@ API REST asíncrona (FastAPI) que extrae, procesa y sirve datos de productos de
 [Dia online](https://www.dia.es). Ofrece el mismo contrato que `mercadona-scraper` y
 `alcampo-scraper` para poder comparar los supermercados sin adaptar el consumidor.
 
-> Estado: MVP (`specs/001-dia-scraper-mvp`). Busca siempre con el código postal por defecto
-> de Dia; ver [Limitaciones conocidas](#limitaciones-conocidas).
+> Estado: búsqueda con el código postal real (`specs/001-dia-scraper-mvp`,
+> `specs/002-dia-scraper-postal-code-resolution`); ver [Limitaciones conocidas](#limitaciones-conocidas).
 
 ## Puesta en marcha
 
@@ -30,13 +30,13 @@ Necesita un Redis accesible en `REDIS_URL`.
 | `page_size` | no | 1–100, por defecto 50 |
 
 ```bash
-curl "http://127.0.0.1:8000/api/v1/products?postal_code=28001&term=leche&page=1&page_size=50"
+curl "http://127.0.0.1:8000/api/v1/products?postal_code=28041&term=leche&page=1&page_size=50"
 ```
 
 ```json
 {
   "search": {
-    "postal_code": "28001",
+    "postal_code": "28041",
     "term": "leche",
     "warehouse": "28041",
     "strategy_used": "api",
@@ -61,7 +61,7 @@ curl "http://127.0.0.1:8000/api/v1/products?postal_code=28001&term=leche&page=1&
 
 | Campo | Significado |
 |---|---|
-| `search.warehouse` | código postal con el que Dia ha servido la búsqueda (`cart.postal_code`). Dia no expone tienda ni almacén |
+| `search.warehouse` | código postal con el que Dia ha servido la búsqueda (`cart.postal_code`): siempre el `postal_code` pedido. Dia no expone tienda ni almacén |
 | `search.total_results` | total de Dia para la búsqueda. Es una estimación: puede desviarse en ±1 |
 | `search.total_pages` | páginas según Dia, con tope 20 |
 | `products[].price` | precio que paga cualquier cliente, **sin** tarjeta Club Dia |
@@ -73,12 +73,24 @@ curl "http://127.0.0.1:8000/api/v1/products?postal_code=28001&term=leche&page=1&
 | Código | Cuándo | Cuerpo |
 |---|---|---|
 | `422` | parámetros inválidos (no se llama a Dia) | formato de FastAPI |
+| `404` | Dia no da servicio en ese código postal, o no existe (Dia no los distingue) | `{"detail": "Postal code not served by Dia"}` |
 | `404` | `page` > 1 más allá de la última página | `{"detail": "Page out of range"}` |
-| `502` | Dia no responde, falla tras los reintentos, responde algo inesperado o Akamai nos bloquea | `{"detail": "Upstream service unavailable"}` |
+| `502` | Dia no responde, falla tras los reintentos, responde algo inesperado, responde con otro código postal o Akamai nos bloquea | `{"detail": "Upstream service unavailable"}` |
 
 Las respuestas correctas, incluidas las búsquedas sin resultados, se cachean en Redis
-`CACHE_TTL_SECONDS` por código postal efectivo, término (sin distinguir mayúsculas), página y
-tamaño de página. Los errores no se cachean.
+`CACHE_TTL_SECONDS` por código postal, término (sin distinguir mayúsculas), página y tamaño de
+página. Los códigos postales sin servicio se recuerdan `POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS`.
+El resto de errores no se cachea.
+
+### Cómo se usa el código postal
+
+Dia toma el código postal de la **sesión** (cookie), no de la búsqueda. La API mantiene en memoria
+una sesión de Dia por código postal: la primera búsqueda de un código postal nuevo cuesta 2
+peticiones a Dia (fijar el código postal y buscar); las siguientes, 1 por página. `28041`, el de
+la sesión anónima de Dia, no necesita la primera. Cada respuesta de Dia dice con qué código postal
+la ha servido: si no es el pedido (la sesión caducó), la API abre otra sesión y repite una vez;
+si sigue sin serlo, responde `502`. Nunca devuelve datos de un código postal como si fueran de
+otro.
 
 ## Configuración
 
@@ -93,13 +105,17 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
 | `RETRY_BASE_DELAY` | `0.5` | espera base entre intentos (backoff exponencial) |
 | `HTTP_TIMEOUT_SECONDS` | `10` | timeout de cada petición a Dia |
 | `LOG_LEVEL` | `INFO` | nivel de log |
+| `SESSION_MAX_AGE_SECONDS` | `3000` | una sesión de Dia se renueva pasado este tiempo desde su creación (la cookie de Dia dura 1 h) |
+| `MAX_SESSIONS` | `100` | sesiones de Dia abiertas a la vez; al superarlo se descarta la usada hace más tiempo |
+| `POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS` | `86400` | cuánto se recuerda que Dia no da servicio en un código postal |
 
 ## Limitaciones conocidas
 
-- **Código postal sin efecto todavía.** Toda búsqueda se hace con el código postal por defecto
-  de Dia (`28041`, Madrid). `postal_code` se valida y se devuelve, pero no cambia precios ni
-  catálogo. Dia sí varía según el código postal (Barcelona tiene otros precios; Sevilla, otro
-  catálogo): la resolución real llega en la spec 002.
+- **Sesiones en memoria.** Las sesiones de Dia viven en el proceso: cada instancia de la API
+  tiene las suyas, y un reinicio las pierde (la siguiente búsqueda de cada código postal vuelve a
+  costar 2 peticiones).
+- **Sin límite de códigos postales nuevos.** Muchos códigos postales distintos en poco tiempo son
+  muchos `PUT` a Dia desde la misma IP; el límite por ventana llega con la spec de anti-baneo.
 - **Precio sin tarjeta.** En ofertas Club Dia se devuelve el precio sin tarjeta y
   `price_format: null`, porque el precio por unidad que da Dia corresponde al precio con tarjeta.
 - **Total aproximado.** `total_results` es el de Dia, que puede desviarse en una unidad.
