@@ -1,10 +1,11 @@
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 
 import httpx
 import pytest
 
 from app.exceptions import UpstreamBlockedError, UpstreamUnavailableError
-from app.scrapers.retry import send_with_retry
+from app.scrapers.retry import parse_retry_after, send_with_retry
 
 REQUEST = httpx.Request("GET", "https://dia.test/api/v1/search-back/search/reduced")
 
@@ -228,3 +229,79 @@ async def test_without_jitter_the_waits_are_the_exact_backoff() -> None:
     await send_with_retry(send, max_attempts=3, base_delay=0.5, sleep=sleep, jitter_max=0.0)
 
     assert sleep.waits == [0.5, 1.0]
+
+
+# --- Retry-After (spec 003 RF-10, T4) ---
+
+NOW = datetime(2026, 10, 7, 12, 0, 0, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("2", 2.0),
+        (" 30 ", 30.0),
+        ("Wed, 07 Oct 2026 12:00:05 GMT", 5.0),
+        ("Wed, 07 Oct 2026 11:59:00 GMT", 0.0),  # in the past: retry now
+        ("soon", None),
+        ("-3", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_parse_retry_after(value: str | None, expected: float | None) -> None:
+    assert parse_retry_after(value, now=NOW) == expected
+
+
+async def run_429(*responses: httpx.Response) -> tuple[FakeSend, FakeSleep]:
+    send, sleep = FakeSend(*responses), FakeSleep()
+    await send_with_retry(
+        send,
+        max_attempts=3,
+        base_delay=0.5,
+        sleep=sleep,
+        jitter_max=0.3,
+        uniform=FakeUniform(0.1),
+        now=lambda: NOW,
+    )
+    return send, sleep
+
+
+async def test_a_429_waits_what_retry_after_says_plus_jitter() -> None:
+    _, sleep = await run_429(response(429, headers={"Retry-After": "2"}), response(200))
+
+    assert sleep.waits == pytest.approx([2.1])
+
+
+async def test_a_429_with_an_http_date_waits_until_then() -> None:
+    limited = response(429, headers={"Retry-After": "Wed, 07 Oct 2026 12:00:04 GMT"})
+
+    _, sleep = await run_429(limited, response(200))
+
+    assert sleep.waits == pytest.approx([4.1])
+
+
+async def test_a_429_asking_for_more_than_60_s_is_not_retried() -> None:
+    send, sleep = (
+        FakeSend(response(429, headers={"Retry-After": "3600"}), response(200)),
+        FakeSleep(),
+    )
+
+    with pytest.raises(UpstreamUnavailableError):
+        await send_with_retry(send, max_attempts=3, base_delay=0.5, sleep=sleep, now=lambda: NOW)
+
+    assert send.calls == 1
+    assert sleep.waits == []
+
+
+@pytest.mark.parametrize("headers", [{}, {"Retry-After": "soon"}], ids=["none", "invalid"])
+async def test_a_429_without_a_usable_retry_after_uses_the_backoff(headers: dict) -> None:
+    _, sleep = await run_429(response(429, headers=headers), response(200))
+
+    assert sleep.waits == pytest.approx([0.6])
+
+
+async def test_retry_after_is_ignored_on_other_statuses() -> None:
+    _, sleep = await run_429(response(503, headers={"Retry-After": "3600"}), response(200))
+
+    assert sleep.waits == pytest.approx([0.6])

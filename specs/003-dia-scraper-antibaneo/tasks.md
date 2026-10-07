@@ -32,7 +32,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** `send_with_retry(..., jitter_max=0.0, uniform=random.uniform)` (plan-D6).
 - **RF:** RF-9
 
-### [ ] T4 — `Retry-After`
+### [x] T4 — `Retry-After`
 - **RED:** en `test_retry.py`: `parse_retry_after` con segundos, fecha HTTP futura, fecha pasada (0), valor inválido (`None`); `429` con `Retry-After: 2` → espera `2 + jitter`; con fecha HTTP → su diferencia; `Retry-After: 3600` → `UpstreamUnavailableError` sin reintento; `429` sin cabecera → backoff; `Retry-After` en un `503` se ignora.
 - **GREEN:** `parse_retry_after` y la espera de `429` (plan-D6).
 - **RF:** RF-10. **Fin de PR1.**
