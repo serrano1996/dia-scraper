@@ -196,7 +196,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 
 ## PR4 — API, integración y docs
 
-### [ ] T16 — Estado, providers, ruta y `main`
+### [x] T16 — Estado, providers, ruta y `main`
 - **RED:** `tests/api/test_products_route.py` y `tests/test_main.py`, con el servicio sustituido por `dependency_overrides`:
   - `GET /api/v1/products?postal_code=28001&term=leche` → `200` y el cuerpo del servicio falso;
   - el servicio lanza `UpstreamUnavailableError` / `UpstreamBlockedError` → `502 {"detail": "Upstream service unavailable"}`, sin el `reason`;
