@@ -90,7 +90,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T5
 - **RF:** RF-10, RF-11, RF-12
 
-### [ ] T9 — Nunca un CP por otro
+### [x] T9 — Nunca un CP por otro
 - **RED:**
   - respuesta con `cart.postal_code="28041"` para `08001` y luego otra correcta → `discard` de la 1.ª sesión, 2 búsquedas, respuesta correcta y cacheada;
   - dos discrepancias → `UpstreamUnavailableError`, `WARNING` con ambos CPs en `caplog`, nada en Redis;

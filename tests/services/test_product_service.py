@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 import httpx
@@ -327,3 +328,61 @@ async def test_a_hit_asks_the_pool_for_no_session(redis, sessions) -> None:
     )
 
     assert sessions.requested == ["08001"]
+
+
+# --- Never one postal code for another (spec 002 RF-8..RF-10, T9) ---
+
+
+class SequenceScraper(FakeScraper):
+    """Answers each call with the next body."""
+
+    def __init__(self, *bodies: dict) -> None:
+        super().__init__()
+        self.bodies = list(bodies)
+
+    async def search(self, term, *, page, page_size, client):
+        self.body = self.bodies[len(self.calls)]
+        return await super().search(term, page=page, page_size=page_size, client=client)
+
+
+async def test_a_session_answering_for_another_postal_code_is_replaced_once(
+    redis, sessions
+) -> None:
+    # The session expired: Dia answered from a fresh one in its default 28041.
+    scraper = SequenceScraper(body_for("28041"), body_for("08001"))
+
+    response = await make_service(scraper, redis, sessions).search(query(postal_code="08001"))
+
+    assert len(scraper.calls) == 2
+    assert [cp for cp, _ in sessions.discarded] == ["08001"]
+    stale = sessions.discarded[0][1]
+    assert scraper.calls[0]["client"] is stale.client
+    assert scraper.calls[1]["client"] is not stale.client
+    assert response.search.warehouse == "08001"
+    assert await redis.keys("*") == [b"search:08001:leche:1:50"]
+
+
+async def test_two_mismatches_answer_502_warn_and_cache_nothing(
+    redis, sessions, caplog: pytest.LogCaptureFixture
+) -> None:
+    scraper = SequenceScraper(body_for("28041"), body_for("28041"))
+
+    with (
+        caplog.at_level(logging.WARNING, logger="app.services.product_service"),
+        pytest.raises(UpstreamUnavailableError),
+    ):
+        await make_service(scraper, redis, sessions).search(query(postal_code="08001"))
+
+    assert len(scraper.calls) == 2
+    assert "expected=08001" in caplog.text
+    assert "got=28041" in caplog.text
+    assert await redis.keys("*") == []
+
+
+async def test_warehouse_is_always_the_requested_postal_code(redis, sessions) -> None:
+    scraper = FakeScraper(body_for("41001"))
+
+    response = await make_service(scraper, redis, sessions).search(query(postal_code="41001"))
+
+    assert response.search.warehouse == response.search.postal_code == "41001"
+    assert sessions.discarded == []

@@ -1,5 +1,6 @@
 """Product search: cache, then Dia, then cache again (spec 001 §4)."""
 
+import logging
 import math
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -8,7 +9,7 @@ from typing import Protocol
 import httpx
 
 from app.core.config import Settings
-from app.exceptions import PageOutOfRangeError
+from app.exceptions import PageOutOfRangeError, UpstreamUnavailableError
 from app.mappers.product_mapper import map_search
 from app.models.dia import DiaSearchResponse
 from app.models.product import MAX_PAGE, ProductQuery, ProductSearchResponse, SearchMetadata
@@ -17,6 +18,11 @@ from app.services.postal_code_sessions import PostalCodeSession
 from app.services.search_cache import SearchCacheRepository
 
 STRATEGY = "api"
+
+logger = logging.getLogger(__name__)
+
+# A session that answers for another postal code is replaced once (spec-D7).
+SESSION_TRIES = 2
 
 
 class SearchScraper(Protocol):
@@ -79,11 +85,7 @@ class ProductService:
         # Dia never serves fewer than 30 products: ask for the Dia page that
         # holds the requested one and keep only that slice (spec-D9, plan-D17).
         window = dia_window(query.page, query.page_size)
-        # Dia takes the postal code from the session (spec 002 RF-1, RF-2).
-        session = await self._sessions.get(query.postal_code)
-        raw = await self._scraper.search(
-            query.term, page=window.page, page_size=window.page_size, client=session.client
-        )
+        raw = await self._search_dia(query, window.page, window.page_size)
         items = raw.search_items[window.offset : window.offset + query.page_size]
         # Raw items, not mapped products: a page whose products are all broken
         # still exists (plan-D8).
@@ -114,3 +116,26 @@ class ProductService:
             ttl_seconds=self._ttl_seconds,
         )
         return response
+
+    async def _search_dia(
+        self, query: ProductQuery, page: int, page_size: int
+    ) -> DiaSearchResponse:
+        """Search Dia with the session of `query.postal_code`, and check Dia used it.
+
+        Dia takes the postal code from the session (spec 002 RF-1, RF-2), and
+        every answer says which one it used (`cart.postal_code`). A session that
+        expired answers from Dia's default instead: it is replaced and the search
+        repeated once. Never one postal code labelled as another (RF-8, RF-9).
+        """
+        answered = ""
+        for _ in range(SESSION_TRIES):
+            session = await self._sessions.get(query.postal_code)
+            raw = await self._scraper.search(
+                query.term, page=page, page_size=page_size, client=session.client
+            )
+            answered = raw.cart.postal_code
+            if answered == query.postal_code:
+                return raw
+            self._sessions.discard(query.postal_code, session)
+        logger.warning("postal code mismatch expected=%s got=%s", query.postal_code, answered)
+        raise UpstreamUnavailableError("Dia answered for another postal code")
