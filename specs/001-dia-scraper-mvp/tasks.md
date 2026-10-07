@@ -207,7 +207,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-1, RF-2, RF-7, RF-19, RF-20, RNF-1
 - **Hecho cuando:** todos los casos pasan y `mypy` sigue limpio.
 
-### [ ] T17 — Harness de integración y camino feliz
+### [x] T17 — Harness de integración y camino feliz
 - **RED:** `tests/integration/conftest.py` (app real + lifespan + `FakeAsyncRedis` + `respx`, plan-D15) y `tests/integration/test_products_endpoint.py`:
   - miss → `200`, cuerpo valida, 1 llamada respx con `q`, `page`, `page_size` y las cabeceras de Chrome;
   - la misma petición otra vez → hit, **0 llamadas** respx nuevas;
