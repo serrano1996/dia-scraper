@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from app.exceptions import UpstreamBlockedError, UpstreamUnavailableError
+from app.exceptions import CooldownActiveError, UpstreamBlockedError, UpstreamUnavailableError
 from app.scrapers.retry import parse_retry_after, send_with_retry
 
 REQUEST = httpx.Request("GET", "https://dia.test/api/v1/search-back/search/reduced")
@@ -305,3 +305,59 @@ async def test_retry_after_is_ignored_on_other_statuses() -> None:
     _, sleep = await run_429(response(503, headers={"Retry-After": "3600"}), response(200))
 
     assert sleep.waits == pytest.approx([0.6])
+
+
+# --- The outbound gate (spec 003 plan-D1, T8) ---
+
+
+class FakeGate:
+    """Counts admissions and blocks; can refuse admission."""
+
+    def __init__(self, refuse: Exception | None = None) -> None:
+        self.admitted = 0
+        self.blocks = 0
+        self.refuse = refuse
+
+    async def admit(self) -> None:
+        if self.refuse is not None:
+            raise self.refuse
+        self.admitted += 1
+
+    async def blocked(self) -> None:
+        self.blocks += 1
+
+
+async def test_the_gate_admits_every_attempt() -> None:
+    send, gate = FakeSend(response(503), response(503), response(200)), FakeGate()
+
+    await send_with_retry(send, max_attempts=3, base_delay=0, sleep=FakeSleep(), gate=gate)
+
+    assert gate.admitted == send.calls == 3
+
+
+async def test_a_refused_admission_sends_nothing() -> None:
+    send, gate = FakeSend(response(200)), FakeGate(refuse=CooldownActiveError("cooldown"))
+
+    with pytest.raises(CooldownActiveError):
+        await send_with_retry(send, max_attempts=3, base_delay=0, sleep=FakeSleep(), gate=gate)
+
+    assert send.calls == 0
+
+
+async def test_an_akamai_block_tells_the_gate_before_raising() -> None:
+    blocked = response(403, text=AKAMAI_ACCESS_DENIED, headers={"Content-Type": "text/html"})
+    send, gate = FakeSend(blocked), FakeGate()
+
+    with pytest.raises(UpstreamBlockedError):
+        await send_with_retry(send, max_attempts=3, base_delay=0, sleep=FakeSleep(), gate=gate)
+
+    assert gate.blocks == 1
+
+
+async def test_other_failures_do_not_tell_the_gate_about_a_block() -> None:
+    send, gate = FakeSend(response(404)), FakeGate()
+
+    with pytest.raises(UpstreamUnavailableError):
+        await send_with_retry(send, max_attempts=3, base_delay=0, sleep=FakeSleep(), gate=gate)
+
+    assert gate.blocks == 0

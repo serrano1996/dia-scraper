@@ -10,6 +10,7 @@ import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from typing import Protocol
 
 import httpx
 
@@ -18,6 +19,14 @@ from app.exceptions import UpstreamBlockedError, UpstreamUnavailableError
 Sleep = Callable[[float], Awaitable[None]]
 Uniform = Callable[[float, float], float]
 Now = Callable[[], datetime]
+
+
+class Gate(Protocol):
+    """What `send_with_retry` needs from `OutboundGate` (spec 003 plan-D1)."""
+
+    async def admit(self) -> None: ...
+    async def blocked(self) -> None: ...
+
 
 # Longest wait a 429's Retry-After may ask for; above it, no retry (spec 003 RF-10, plan-D6).
 MAX_RETRY_AFTER_SECONDS = 60.0
@@ -92,6 +101,7 @@ async def send_with_retry(
     jitter_max: float = 0.0,
     uniform: Uniform = random.uniform,
     now: Now = _utc_now,
+    gate: Gate | None = None,
 ) -> httpx.Response:
     """Call `send`, retrying transient failures with exponential backoff.
 
@@ -106,6 +116,9 @@ async def send_with_retry(
       backoff; above 60 s, `UpstreamUnavailableError` at once (spec 003 RF-10).
     - Any other 4xx, and any 1xx or 3xx: `UpstreamUnavailableError` at once, with
       its status (RF-18). Other request errors (decoding, redirects) too, unretried.
+    - With a `gate`, `gate.admit()` runs before every attempt, retries included,
+      and may refuse it (cooldown, outbound limit); an Akamai block calls
+      `gate.blocked()` before raising (spec 003 RF-1, RF-4).
     - Exhausting the attempts raises `UpstreamUnavailableError` (RF-20), chained
       to the last transport error, if any: no httpx type leaves the scrapers (RF-22).
     """
@@ -113,6 +126,8 @@ async def send_with_retry(
     last_error: httpx.TransportError | None = None
     asked_wait: float | None = None
     for attempt in range(1, max_attempts + 1):
+        if gate is not None:
+            await gate.admit()
         try:
             response = await send()
         except httpx.TransportError as error:
@@ -123,7 +138,12 @@ async def send_with_retry(
             # Not transient (a body that cannot be decoded, a redirect loop): no retry.
             raise UpstreamUnavailableError(f"request error: {type(error).__name__}") from error
         else:
-            _raise_if_rejected(response)
+            try:
+                _raise_if_rejected(response)
+            except UpstreamBlockedError:
+                if gate is not None:
+                    await gate.blocked()
+                raise
             if not _is_retryable(response):
                 return response
             reason = f"status {response.status_code}"

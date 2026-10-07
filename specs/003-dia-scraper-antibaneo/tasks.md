@@ -60,7 +60,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 
 ## PR3 — La puerta en las peticiones y el límite de sesiones
 
-### [ ] T8 — La puerta en `send_with_retry`
+### [x] T8 — La puerta en `send_with_retry`
 - **RED:** en `test_retry.py`, con una puerta falsa que cuenta: `admit` se llama antes de cada intento (3 con `503, 503, 200`); si `admit` lanza, `send` no se llama; un `403` de Akamai llama a `blocked` y luego lanza `UpstreamBlockedError`; sin puerta, todo como hoy.
 - **GREEN:** parámetro `gate` (plan-D1).
 - **RF:** RF-1, RF-4
