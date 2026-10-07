@@ -1,6 +1,6 @@
 # Tasks 002 — Búsqueda con el código postal real
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 4 PRs encadenados (stacked). Cada PR deja la suite en verde.
 
@@ -17,7 +17,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 
 ## PR1 — Base
 
-### [ ] T1 — Settings nuevos
+### [x] T1 — Settings nuevos
 - **RED:** `tests/core/test_config.py`: defaults `SESSION_MAX_AGE_SECONDS=3000`, `MAX_SESSIONS=100`, `POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS=86400`; el entorno los sobrescribe; `0` en cualquiera → `ValidationError`.
 - **GREEN:** `app/core/config.py`.
 - **RF:** RF-5, RF-13 (spec-D2, spec-D5)

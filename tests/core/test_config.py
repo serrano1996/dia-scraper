@@ -13,6 +13,9 @@ OPTIONAL = [
     "RETRY_BASE_DELAY",
     "HTTP_TIMEOUT_SECONDS",
     "LOG_LEVEL",
+    "SESSION_MAX_AGE_SECONDS",
+    "MAX_SESSIONS",
+    "POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS",
 ]
 
 
@@ -51,6 +54,10 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.retry_base_delay == 0.5
     assert settings.http_timeout_seconds == 10
     assert settings.log_level == "INFO"
+    # Spec 002: postal code sessions and the negative cache (spec-D2, spec-D5).
+    assert settings.session_max_age_seconds == 3000
+    assert settings.max_sessions == 100
+    assert settings.postal_code_negative_cache_ttl_seconds == 86400
 
 
 def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,6 +67,9 @@ def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("RETRY_BASE_DELAY", "0.1")
     monkeypatch.setenv("HTTP_TIMEOUT_SECONDS", "2.5")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("SESSION_MAX_AGE_SECONDS", "600")
+    monkeypatch.setenv("MAX_SESSIONS", "5")
+    monkeypatch.setenv("POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS", "3600")
 
     settings = Settings(_env_file=None)
 
@@ -68,10 +78,21 @@ def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None
     assert settings.retry_base_delay == 0.1
     assert settings.http_timeout_seconds == 2.5
     assert settings.log_level == "DEBUG"
+    assert settings.session_max_age_seconds == 600
+    assert settings.max_sessions == 5
+    assert settings.postal_code_negative_cache_ttl_seconds == 3600
 
 
 @pytest.mark.parametrize(
-    "name", ["CACHE_TTL_SECONDS", "RETRY_MAX_ATTEMPTS", "HTTP_TIMEOUT_SECONDS"]
+    "name",
+    [
+        "CACHE_TTL_SECONDS",
+        "RETRY_MAX_ATTEMPTS",
+        "HTTP_TIMEOUT_SECONDS",
+        "SESSION_MAX_AGE_SECONDS",
+        "MAX_SESSIONS",
+        "POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS",
+    ],
 )
 def test_non_positive_values_fail(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
     set_required(monkeypatch)
