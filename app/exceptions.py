@@ -39,3 +39,16 @@ class PageOutOfRangeError(DiaScraperError):
     def __init__(self, page: int) -> None:
         super().__init__(f"page {page}")
         self.page = page
+
+
+class PostalCodeNotServedError(DiaScraperError):
+    """Raised when Dia does not serve a postal code: it has no service there or it does not exist.
+
+    Dia answers both the same way (Fase 0 §4). Not an upstream failure: Dia
+    answered, the answer is "no". It maps to a 404 with our own detail, never
+    Dia's text (spec 002 RF-4, plan-D10).
+    """
+
+    def __init__(self, postal_code: str) -> None:
+        super().__init__(postal_code)
+        self.postal_code = postal_code

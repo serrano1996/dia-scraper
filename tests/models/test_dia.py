@@ -3,7 +3,7 @@ import math
 import pytest
 from pydantic import ValidationError
 
-from app.models.dia import DiaProduct, DiaSearchResponse
+from app.models.dia import DiaProduct, DiaSearchResponse, DiaValidationError
 from tests.fixture_data import load_fixture
 
 CLUB_PRODUCT_ID = "274051"  # Jamón serrano, Club Dia offer (Fase 0 §6)
@@ -144,3 +144,33 @@ def test_regular_product_without_strikethrough_price_is_valid() -> None:
     del raw["prices"]["strikethrough_price"]
 
     assert DiaProduct.model_validate(raw).prices.strikethrough_price is None
+
+
+# --- Body of the 206 to save-shipping-address (spec 002) ---
+
+
+def test_real_no_service_body_validates() -> None:
+    body = DiaValidationError.model_validate(
+        load_fixture("dia_save_shipping_address_no_service.json")
+    )
+
+    assert body.type == "VALIDATION_ERROR"
+    assert body.message.no_service == "No service for supplied postal code"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda body: body["message"].pop("no_service"),
+        lambda body: body["message"].update(no_service=""),
+        lambda body: body.update(type="OTHER_ERROR"),
+        lambda body: body.pop("message"),
+    ],
+    ids=["no-no-service", "empty-no-service", "other-type", "no-message"],
+)
+def test_other_206_bodies_are_not_a_no_service_answer(change) -> None:
+    body = load_fixture("dia_save_shipping_address_no_service.json")
+    change(body)
+
+    with pytest.raises(ValidationError):
+        DiaValidationError.model_validate(body)

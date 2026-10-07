@@ -2,6 +2,7 @@ import app.exceptions
 from app.exceptions import (
     DiaScraperError,
     PageOutOfRangeError,
+    PostalCodeNotServedError,
     UpstreamBlockedError,
     UpstreamUnavailableError,
 )
@@ -36,3 +37,11 @@ def test_page_out_of_range_error_is_not_an_upstream_failure() -> None:
 
 def test_exceptions_module_does_not_import_httpx() -> None:
     assert "httpx" not in vars(app.exceptions)
+
+
+def test_postal_code_not_served_is_an_answer_not_an_upstream_failure() -> None:
+    error = PostalCodeNotServedError("35001")
+
+    assert isinstance(error, DiaScraperError)
+    assert not isinstance(error, UpstreamUnavailableError)
+    assert error.postal_code == "35001"

@@ -22,7 +22,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **GREEN:** `app/core/config.py`.
 - **RF:** RF-5, RF-13 (spec-D2, spec-D5)
 
-### [ ] T2 — Excepción y cuerpo del `206`
+### [x] T2 — Excepción y cuerpo del `206`
 - **RED:**
   - `tests/test_exceptions.py`: `PostalCodeNotServedError("35001")` es `DiaScraperError`, **no** `UpstreamUnavailableError`, y expone `.postal_code`.
   - `tests/models/test_dia.py`: la fixture real `dia_save_shipping_address_no_service.json` valida contra `DiaValidationError`; sin `message.no_service`, con `type` distinto o con `no_service` vacío → `ValidationError`.

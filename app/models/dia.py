@@ -1,9 +1,9 @@
-"""Pydantic schemas for Dia's raw search response (`/api/v1/search-back/search/reduced`).
+"""Pydantic schemas for Dia's raw responses: the search and `save-shipping-address`.
 
 Only the fields the API needs are declared; the rest are ignored (Fase 0 §6).
 """
 
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -90,3 +90,24 @@ class DiaSearchResponse(BaseModel):
     pagination: DiaPagination
     total_items: int
     search_items: list[JsonValue]
+
+
+class DiaNoService(BaseModel):
+    """`message` of a 206 to `save-shipping-address`."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    no_service: str = Field(min_length=1)
+
+
+class DiaValidationError(BaseModel):
+    """Body of the 206 Dia answers when it does not serve a postal code (Fase 0 §4).
+
+    `{"code": 206, "message": {"no_service": "..."}, "type": "VALIDATION_ERROR"}`.
+    Any other 206 body is not this answer (spec 002 RF-6, plan-D2).
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: Literal["VALIDATION_ERROR"]
+    message: DiaNoService
