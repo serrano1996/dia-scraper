@@ -29,9 +29,14 @@ class Harness:
     redis: FakeAsyncRedis
 
     def cache_keys(self) -> list[bytes]:
-        """Redis keys, read on the app's own event loop (the TestClient portal)."""
+        """Cache keys in Redis (searches and postal codes not served), sorted.
+
+        Read on the app's own event loop (the TestClient portal). The anti-ban
+        keys of spec 003 (`ratelimit:*`, `akamai:cooldown`) are not cache.
+        """
         assert self.client.portal is not None
-        return self.client.portal.call(self.redis.keys, "*")
+        keys = self.client.portal.call(self.redis.keys, "*")
+        return sorted(key for key in keys if key.startswith((b"search:", b"postal_code:")))
 
 
 @pytest.fixture

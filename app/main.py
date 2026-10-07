@@ -17,7 +17,10 @@ from app.exceptions import (
 )
 from app.scrapers.dia_session import DiaSession
 from app.scrapers.http_client import create_http_client
+from app.services.cooldown import AkamaiCooldown
+from app.services.outbound import OutboundGate
 from app.services.postal_code_sessions import PostalCodeSessions
+from app.services.rate_limiter import RateLimiter
 
 
 def create_redis(settings: Settings) -> redis.Redis:
@@ -33,14 +36,37 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Each client is closed even if building the next one fails.
         redis_client = create_redis(settings)
         stack.push_async_callback(redis_client.aclose)
-        # Each session builds its own HTTP client, with its own cookie jar (plan-D1, D11).
+        # One gate per process: every request to Dia, from the scraper or from a
+        # session's PUT, goes through it (spec 003 plan-D1, plan-D8).
+        gate = OutboundGate(
+            cooldown=AkamaiCooldown(redis_client, seconds=settings.akamai_cooldown_seconds),
+            limiter=RateLimiter(
+                redis_client,
+                key="ratelimit:dia",
+                name="dia",
+                limit=settings.dia_rate_limit,
+                window_seconds=settings.dia_rate_window_seconds,
+            ),
+        )
+        # Each session builds its own HTTP client, with its own cookie jar (spec 002 plan-D1).
         sessions = PostalCodeSessions(
-            new_session=lambda: DiaSession(client=create_http_client(settings), settings=settings),
+            new_session=lambda: DiaSession(
+                client=create_http_client(settings), settings=settings, gate=gate
+            ),
             max_age_seconds=settings.session_max_age_seconds,
             max_sessions=settings.max_sessions,
+            session_limiter=RateLimiter(
+                redis_client,
+                key="ratelimit:dia:new_sessions",
+                name="new_sessions",
+                limit=settings.new_session_limit,
+                window_seconds=settings.new_session_window_seconds,
+            ),
         )
         stack.push_async_callback(sessions.aclose)
-        app.state.resources = AppResources(settings=settings, redis=redis_client, sessions=sessions)
+        app.state.resources = AppResources(
+            settings=settings, redis=redis_client, sessions=sessions, gate=gate
+        )
         yield
 
 

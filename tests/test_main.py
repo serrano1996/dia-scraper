@@ -1,12 +1,16 @@
 import httpx
 import pytest
+import respx
 from fakeredis import FakeAsyncRedis
 from fastapi.testclient import TestClient
 
 import app.main as main
 from app.core.config import get_settings
 from app.core.state import AppResources, resources
+from app.exceptions import CooldownActiveError, OutboundRateLimitedError
 from app.main import create_app
+from app.services.cooldown import COOLDOWN_KEY
+from app.services.outbound import OutboundGate
 from app.services.postal_code_sessions import PostalCodeSessions
 
 
@@ -71,3 +75,55 @@ def test_redis_is_closed_when_the_session_pool_cannot_be_built(
         pass
 
     assert redis.closed
+
+
+# --- Anti-ban wiring (spec 003, T11) ---
+
+
+def app_with(monkeypatch: pytest.MonkeyPatch, redis: FakeAsyncRedis):
+    monkeypatch.setenv("RETRY_JITTER_MAX_S", "0")
+    get_settings.cache_clear()
+    monkeypatch.setattr(main, "create_redis", lambda settings: redis)
+    return create_app()
+
+
+def test_the_lifespan_builds_one_outbound_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = app_with(monkeypatch, FakeAsyncRedis())
+
+    with TestClient(app):
+        assert isinstance(resources(app).gate, OutboundGate)
+
+
+def test_during_a_cooldown_neither_puts_nor_searches_reach_dia(
+    monkeypatch: pytest.MonkeyPatch, respx_mock: respx.MockRouter
+) -> None:
+    put = respx_mock.put("https://dia.test/api/v1/common-aggregator/save-shipping-address")
+    search = respx_mock.get("https://dia.test/api/v1/search-back/search/reduced")
+    redis = FakeAsyncRedis()
+    app = app_with(monkeypatch, redis)
+
+    with TestClient(app) as client:
+        client.portal.call(lambda: redis.set(COOLDOWN_KEY, "1", ex=300))
+        with pytest.raises(CooldownActiveError):
+            client.portal.call(resources(app).sessions.get, "08001")
+        response = client.get("/api/v1/products", params={"postal_code": "28041", "term": "pan"})
+
+    assert response.status_code == 502
+    assert put.call_count == search.call_count == 0
+
+
+def test_the_pool_limits_new_sessions(
+    monkeypatch: pytest.MonkeyPatch, respx_mock: respx.MockRouter
+) -> None:
+    monkeypatch.setenv("NEW_SESSION_LIMIT", "1")
+    put = respx_mock.put("https://dia.test/api/v1/common-aggregator/save-shipping-address").mock(
+        return_value=httpx.Response(204)
+    )
+    app = app_with(monkeypatch, FakeAsyncRedis())
+
+    with TestClient(app) as client:
+        client.portal.call(resources(app).sessions.get, "08001")
+        with pytest.raises(OutboundRateLimitedError):
+            client.portal.call(resources(app).sessions.get, "41001")
+
+    assert put.call_count == 1

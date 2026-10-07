@@ -79,7 +79,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 
 ## PR4 — Cableado, integración y docs
 
-### [ ] T11 — Cableado
+### [x] T11 — Cableado
 - **RED:** `tests/test_main.py`: `AppResources` tiene `gate`; el pool usa el limitador de sesiones; una `DiaSession` creada por el pool y el scraper del provider comparten la misma puerta.
 - **GREEN:** `state.py`, `dependencies.py`, `main.py` (plan-D8).
 

@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 from starlette.applications import Starlette
 
 from app.core.config import Settings
+from app.services.outbound import OutboundGate
 from app.services.postal_code_sessions import PostalCodeSessions
 
 
@@ -22,6 +23,8 @@ class AppResources:
     redis: Redis
     # One Dia session per postal code, each with its own HTTP client (spec 002).
     sessions: PostalCodeSessions
+    # Every request to Dia goes through it: cooldown and global limit (spec 003).
+    gate: OutboundGate
 
 
 def resources(app: Starlette) -> AppResources:

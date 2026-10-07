@@ -18,7 +18,7 @@ def get_product_service(request: Request) -> ProductService:
     """Build a `ProductService` from the resources created in the `lifespan`."""
     res = resources(request.app)
     return ProductService(
-        scraper=DiaSearchScraper(settings=res.settings),
+        scraper=DiaSearchScraper(settings=res.settings, gate=res.gate),
         cache=SearchCacheRepository(res.redis),
         not_served=NotServedRepository(res.redis),
         sessions=res.sessions,
