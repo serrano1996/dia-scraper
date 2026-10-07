@@ -22,7 +22,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** validador en `Settings`.
 - **RF:** RF-2
 
-### [ ] T2 — `configure_logging`
+### [x] T2 — `configure_logging`
 - **RED:** `tests/core/test_logging.py`: con un `StringIO`, una línea tiene el formato de plan-D3 con `[-]` fuera de petición y `[<id>]` con `request_id_var` puesto; dos llamadas no duplican líneas; el nivel se aplica; `caplog` sigue capturando y ve `request_id`; el logger `httpx` queda en `WARNING`.
 - **GREEN:** `app/core/logging.py` (plan-D1, D2, D3, D4).
 - **RF:** RF-1, RF-4, RF-18
