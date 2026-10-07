@@ -58,7 +58,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T3
 - **RF:** RF-2, RF-3, RF-7
 
-### [ ] T6 — Edad, LRU y retiro
+### [x] T6 — Edad, LRU y retiro
 - **RED:** en `test_postal_code_sessions.py`:
   - pasados `SESSION_MAX_AGE_SECONDS` desde la creación → sesión nueva; la vieja queda retirada, no cerrada;
   - con `max_sessions=2`: `get(A)`, `get(B)`, `get(A)`, `get(C)` → se retira B (la menos usada), no A;

@@ -6,13 +6,20 @@ postal code costs no extra request. Session cookies stay in this process.
 """
 
 import time
+from collections import OrderedDict
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Protocol
 
 import httpx
 
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.services.in_flight import InFlight
+
+# How long a retired session stays open: a search may still be using it. The
+# worst search with the defaults is RETRY_MAX_ATTEMPTS x HTTP_TIMEOUT_SECONDS
+# plus the waits, about 32 s; raise this if those settings grow (plan-D6, R5).
+RETIRE_GRACE_SECONDS = 120
 
 
 class PostalCodeSession(Protocol):
@@ -26,6 +33,18 @@ class PostalCodeSession(Protocol):
 
     async def set_postal_code(self, postal_code: str) -> None: ...
     async def aclose(self) -> None: ...
+
+
+@dataclass
+class _Entry:
+    session: PostalCodeSession
+    created_at: float
+
+
+@dataclass
+class _Retired:
+    session: PostalCodeSession
+    retired_at: float
 
 
 class PostalCodeSessions:
@@ -43,25 +62,45 @@ class PostalCodeSessions:
         self._max_age = max_age_seconds
         self._max_sessions = max_sessions
         self._now = now
-        self._sessions: dict[str, PostalCodeSession] = {}
+        # Least recently used first (plan-D5).
+        self._entries: OrderedDict[str, _Entry] = OrderedDict()
+        self._retired: list[_Retired] = []
         self._creations: InFlight[PostalCodeSession] = InFlight()
 
     async def get(self, postal_code: str) -> PostalCodeSession:
-        """The session for `postal_code`, created (with its `PUT`) if missing.
+        """The session for `postal_code`, created (with its `PUT`) if missing or too old.
 
-        Raises what `set_postal_code` raises: `PostalCodeNotServedError`,
-        `UpstreamUnavailableError`. A failed session is closed and not kept.
+        Age counts from creation (plan-D4). Raises what `set_postal_code` raises:
+        `PostalCodeNotServedError`, `UpstreamUnavailableError`. A failed session
+        is closed and not kept.
         """
-        session = self._sessions.get(postal_code)
-        if session is not None:
-            return session
+        entry = self._entries.get(postal_code)
+        if entry is not None:
+            if self._now() - entry.created_at < self._max_age:
+                self._entries.move_to_end(postal_code)
+                return entry.session
+            self._retire(postal_code)
         session, _ = await self._creations.run(postal_code, lambda: self._create(postal_code))
         return session
 
+    async def discard(self, postal_code: str, session: PostalCodeSession) -> None:
+        """Drop `session` if it is still the one kept for `postal_code` (spec 002 RF-9).
+
+        A newer session of the same postal code is left alone: another search
+        already replaced the stale one.
+        """
+        entry = self._entries.get(postal_code)
+        if entry is not None and entry.session is session:
+            self._retire(postal_code)
+
     async def aclose(self) -> None:
-        for session in self._sessions.values():
-            await session.aclose()
-        self._sessions.clear()
+        """Close every session, active and retired (RF-14)."""
+        for entry in self._entries.values():
+            await entry.session.aclose()
+        for retired in self._retired:
+            await retired.session.aclose()
+        self._entries.clear()
+        self._retired.clear()
 
     async def _create(self, postal_code: str) -> PostalCodeSession:
         session = self._new_session()
@@ -72,5 +111,20 @@ class PostalCodeSessions:
         except BaseException:
             await session.aclose()
             raise
-        self._sessions[postal_code] = session
+        self._entries[postal_code] = _Entry(session=session, created_at=self._now())
+        while len(self._entries) > self._max_sessions:
+            self._retire(next(iter(self._entries)))
+        await self._close_expired_retired()
         return session
+
+    def _retire(self, postal_code: str) -> None:
+        """Stop handing out the session; it is closed later, once no search can be using it."""
+        entry = self._entries.pop(postal_code)
+        self._retired.append(_Retired(session=entry.session, retired_at=self._now()))
+
+    async def _close_expired_retired(self) -> None:
+        now = self._now()
+        expired = [r for r in self._retired if now - r.retired_at >= RETIRE_GRACE_SECONDS]
+        self._retired = [r for r in self._retired if now - r.retired_at < RETIRE_GRACE_SECONDS]
+        for retired in expired:
+            await retired.session.aclose()

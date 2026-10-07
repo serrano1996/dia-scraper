@@ -5,7 +5,7 @@ import pytest
 
 from app.exceptions import PostalCodeNotServedError, UpstreamUnavailableError
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
-from app.services.postal_code_sessions import PostalCodeSessions
+from app.services.postal_code_sessions import RETIRE_GRACE_SECONDS, PostalCodeSessions
 
 
 class FakeSession:
@@ -136,3 +136,101 @@ async def test_a_failed_put_closes_the_session_and_keeps_nothing(error: Exceptio
     session = await pool.get("35001")  # tries again with a new session
     assert session is factory.created[1]
     await pool.aclose()
+
+
+# --- Age, LRU and retirement (T6) ---
+
+
+async def test_an_old_session_is_replaced_and_the_old_one_retired_not_closed() -> None:
+    factory, clock = Factory(), Clock()
+    pool = make_pool(factory, clock, max_age_seconds=3000)
+    old = await pool.get("08001")
+
+    clock.now += 3000
+    new = await pool.get("08001")
+
+    assert new is not old
+    assert new.puts == ["08001"]
+    assert not old.closed  # a search may still be using it (plan-D6)
+    await pool.aclose()
+
+
+async def test_a_session_younger_than_the_max_age_is_kept() -> None:
+    factory, clock = Factory(), Clock()
+    pool = make_pool(factory, clock, max_age_seconds=3000)
+    first = await pool.get("08001")
+
+    clock.now += 2999
+    assert await pool.get("08001") is first
+    await pool.aclose()
+
+
+async def test_past_the_maximum_the_least_recently_used_session_is_retired() -> None:
+    factory = Factory()
+    pool = make_pool(factory, max_sessions=2)
+    a = await pool.get("08001")
+    b = await pool.get("41001")
+    await pool.get("08001")  # A is now the most recently used
+
+    await pool.get("07001")
+
+    assert await pool.get("08001") is a
+    assert len(factory.created) == 3  # B was dropped, A kept
+    b_again = await pool.get("41001")
+    assert b_again is not b
+    await pool.aclose()
+
+
+async def test_discard_retires_that_session() -> None:
+    factory = Factory()
+    pool = make_pool(factory)
+    stale = await pool.get("08001")
+
+    await pool.discard("08001", stale)
+    fresh = await pool.get("08001")
+
+    assert fresh is not stale
+    assert not stale.closed
+    await pool.aclose()
+
+
+async def test_discard_leaves_a_newer_session_of_the_same_postal_code_alone() -> None:
+    factory, clock = Factory(), Clock()
+    pool = make_pool(factory, clock, max_age_seconds=3000)
+    old = await pool.get("08001")
+    clock.now += 3000
+    new = await pool.get("08001")
+
+    await pool.discard("08001", old)
+
+    assert await pool.get("08001") is new
+    await pool.aclose()
+
+
+async def test_retired_sessions_are_closed_once_the_grace_period_is_over() -> None:
+    factory, clock = Factory(), Clock()
+    pool = make_pool(factory, clock)
+    stale = await pool.get("08001")
+    await pool.discard("08001", stale)
+
+    clock.now += RETIRE_GRACE_SECONDS - 1
+    await pool.get("41001")  # creating a session sweeps the retired ones
+    assert not stale.closed
+
+    clock.now += 1
+    await pool.get("07001")
+    assert stale.closed
+    await pool.aclose()
+
+
+async def test_aclose_closes_active_and_retired_sessions() -> None:
+    factory = Factory()
+    pool = make_pool(factory)
+    stale = await pool.get("08001")
+    await pool.discard("08001", stale)
+    active = await pool.get("41001")
+
+    await pool.aclose()
+
+    assert stale.closed
+    assert active.closed
