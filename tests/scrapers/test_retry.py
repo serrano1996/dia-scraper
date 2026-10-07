@@ -190,3 +190,41 @@ async def test_non_transport_request_errors_become_domain_errors_without_retry(
 
     assert exc_info.value.__cause__ is error
     assert send.calls == 1
+
+
+# --- Jitter (spec 003 RF-9, T3) ---
+
+
+class FakeUniform:
+    """Records its bounds and always returns `value`."""
+
+    def __init__(self, value: float) -> None:
+        self.value = value
+        self.bounds: list[tuple[float, float]] = []
+
+    def __call__(self, low: float, high: float) -> float:
+        self.bounds.append((low, high))
+        return self.value
+
+
+async def test_every_wait_adds_jitter() -> None:
+    send, sleep, uniform = (
+        FakeSend(response(503), response(503), response(200)),
+        FakeSleep(),
+        FakeUniform(0.2),
+    )
+
+    await send_with_retry(
+        send, max_attempts=3, base_delay=0.5, sleep=sleep, jitter_max=0.3, uniform=uniform
+    )
+
+    assert sleep.waits == pytest.approx([0.7, 1.2])
+    assert uniform.bounds == [(0, 0.3), (0, 0.3)]
+
+
+async def test_without_jitter_the_waits_are_the_exact_backoff() -> None:
+    send, sleep = FakeSend(response(503), response(503), response(200)), FakeSleep()
+
+    await send_with_retry(send, max_attempts=3, base_delay=0.5, sleep=sleep, jitter_max=0.0)
+
+    assert sleep.waits == [0.5, 1.0]

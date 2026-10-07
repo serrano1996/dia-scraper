@@ -5,6 +5,7 @@ injectable `sleep`, so tests never wait for real time (plan-D6).
 """
 
 import asyncio
+import random
 from collections.abc import Awaitable, Callable
 
 import httpx
@@ -12,6 +13,7 @@ import httpx
 from app.exceptions import UpstreamBlockedError, UpstreamUnavailableError
 
 Sleep = Callable[[float], Awaitable[None]]
+Uniform = Callable[[float, float], float]
 
 
 def _is_akamai_block(response: httpx.Response) -> bool:
@@ -41,6 +43,8 @@ async def send_with_retry(
     max_attempts: int,
     base_delay: float,
     sleep: Sleep = asyncio.sleep,
+    jitter_max: float = 0.0,
+    uniform: Uniform = random.uniform,
 ) -> httpx.Response:
     """Call `send`, retrying transient failures with exponential backoff.
 
@@ -49,7 +53,8 @@ async def send_with_retry(
       is a verdict on our fingerprint, not a transient failure (RF-19, spec-D7).
     - 5xx, 429 and transport errors (timeouts included) are retried up to
       `max_attempts` attempts in total (spec 001 RF-17). The wait between attempt
-      n and n+1 is `base_delay * 2 ** (n - 1)`.
+      n and n+1 is `base_delay * 2 ** (n - 1)` plus a random jitter in
+      `[0, jitter_max]`, so the waits do not follow a regular pattern (spec 003 RF-9).
     - Any other 4xx, and any 1xx or 3xx: `UpstreamUnavailableError` at once, with
       its status (RF-18). Other request errors (decoding, redirects) too, unretried.
     - Exhausting the attempts raises `UpstreamUnavailableError` (RF-20), chained
@@ -73,7 +78,7 @@ async def send_with_retry(
             reason = f"status {response.status_code}"
             last_error = None
         if attempt < max_attempts:
-            await sleep(base_delay * 2 ** (attempt - 1))
+            await sleep(base_delay * 2 ** (attempt - 1) + uniform(0, jitter_max))
     raise UpstreamUnavailableError(
         f"retries exhausted after {max_attempts} attempts ({reason})"
     ) from last_error

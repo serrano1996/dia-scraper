@@ -27,7 +27,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** `app/exceptions.py` (plan-D4).
 - **RF:** RF-2, RF-5, RF-7
 
-### [ ] T3 — Jitter
+### [x] T3 — Jitter
 - **RED:** `tests/scrapers/test_retry.py`: con `uniform` falso que devuelve `0.2`, `503, 503, 200` espera `[0.7, 1.2]`; `uniform` recibe `(0, jitter_max)`; con `jitter_max=0` las esperas son las de hoy.
 - **GREEN:** `send_with_retry(..., jitter_max=0.0, uniform=random.uniform)` (plan-D6).
 - **RF:** RF-9
