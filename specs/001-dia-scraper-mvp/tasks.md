@@ -75,7 +75,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-11, RF-21
 - **Hecho cuando:** todos los casos pasan usando las fixtures reales, sin copiarlas a mano.
 
-### [ ] T6 — Formato del precio por unidad
+### [x] T6 — Formato del precio por unidad
 - **RED:** `tests/mappers/test_product_mapper.py::test_format_unit_price_*`:
   - `0.83` + `LITRO` → `"0.83 €/L"`; `0.8` → `"0.80 €/L"`;
   - `KILO` → `kg`, `UNIDAD` → `ud`, `DOCENA` → `docena`, `LAVADO` → `lavado`, `100 ML.` → `100 ml`, `100 GR.` → `100 g`;
