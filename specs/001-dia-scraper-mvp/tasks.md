@@ -61,7 +61,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-2, RF-12
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T5 — Schemas crudos de Dia
+### [x] T5 — Schemas crudos de Dia
 - **RED:** `tests/models/test_dia.py`:
   - la fixture real `dia_search_leche.json` valida contra `DiaSearchResponse` (`cart.postal_code == "28041"`, `total_items == 417`, `pagination.total_pages == 14`, 3 productos crudos);
   - `dia_search_no_results.json` valida (sin `facets`, `search_items: []`);
