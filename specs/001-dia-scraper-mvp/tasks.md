@@ -231,7 +231,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-2, RF-7, RF-15, RF-18, RF-19, RF-20
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T19 — Paridad de contrato con Mercadona
+### [x] T19 — Paridad de contrato con Mercadona
 - **RED:** `tests/api/test_contract_parity.py` (copiado de Alcampo) contra `tests/fixtures/mercadona_search_response_schema.json`. Debe pasar a la primera si los schemas de T4 son correctos; para confirmar que el test muerde, se comprueba en local que quitar un campo de `SearchMetadata` lo pone en rojo (sin commitear ese cambio).
 - **GREEN:** —
 - **Depende:** T4
