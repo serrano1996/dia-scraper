@@ -1,6 +1,6 @@
 # Tasks 001 — MVP de búsqueda de productos
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 4 PRs encadenados (stacked). Cada PR deja la suite en verde.
 
@@ -17,7 +17,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 
 ## PR1 — Base, modelos y mapper
 
-### [ ] T1 — Entorno y paquete `app`
+### [x] T1 — Entorno y paquete `app`
 - **RED:** `tests/test_package.py` importa `app`, `app.api.v1`, `app.core`, `app.models`, `app.mappers`, `app.scrapers`, `app.services` y `app.middleware` → `ModuleNotFoundError`.
 - **GREEN:** crear los `__init__.py` vacíos. Crear el venv e instalar con `pip install -e ".[dev]"`.
 - **Depende:** —

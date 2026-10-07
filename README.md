@@ -4,7 +4,7 @@ API REST asíncrona (FastAPI) que extrae, procesa y sirve datos de productos de
 [Dia online](https://www.dia.es). Ofrece el mismo contrato que `mercadona-scraper` y
 `alcampo-scraper` para poder comparar los supermercados sin adaptar el consumidor.
 
-> Estado: esqueleto. La primera feature (`specs/001-dia-scraper-mvp`) tiene la spec aprobada; plan y tareas en revisión.
+> Estado: esqueleto. La primera feature (`specs/001-dia-scraper-mvp`) está en implementación (spec, plan y tareas aprobados).
 
 ## Puesta en marcha
 

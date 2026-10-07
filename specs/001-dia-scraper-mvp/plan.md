@@ -1,6 +1,6 @@
 # Plan 001 — MVP de búsqueda de productos
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Fecha:** 2026-10-07
 - **Spec:** [spec.md](spec.md) (aprobada). Sus decisiones se citan como **spec-D1…spec-D8** para no confundirlas con las decisiones de diseño de este plan (**D1…**).
 
@@ -61,13 +61,15 @@ PostalCode = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^
 MAX_PAGE = 20
 MAX_PAGE_SIZE = 100
 
+
 class ProductQuery(BaseModel):
     postal_code: PostalCode
     term: SearchTerm
     page: int = Field(default=1, ge=1, le=MAX_PAGE)
     page_size: int = Field(default=50, ge=1, le=MAX_PAGE_SIZE)
 
-class Product(BaseModel):            # frozen
+
+class Product(BaseModel):  # frozen
     id: str
     name: str
     price: float
@@ -75,18 +77,20 @@ class Product(BaseModel):            # frozen
     image_url: str
     category: str
 
-class SearchMetadata(BaseModel):     # frozen
+
+class SearchMetadata(BaseModel):  # frozen
     postal_code: str
     term: str
     warehouse: str
     strategy_used: str
-    scraped_at: datetime             # UTC, serializado con "Z"
+    scraped_at: datetime  # UTC, serializado con "Z"
     total_results: int
     page: int
     page_size: int
     total_pages: int
 
-class ProductSearchResponse(BaseModel):   # frozen
+
+class ProductSearchResponse(BaseModel):  # frozen
     search: SearchMetadata
     products: list[Product]
 ```
@@ -105,6 +109,7 @@ class DiaPrices(BaseModel):
     strikethrough_price: float | None = None
     is_club_price: bool = False
 
+
 class DiaProduct(BaseModel):
     object_id: str = Field(min_length=1)
     display_name: str = Field(min_length=1)
@@ -112,19 +117,22 @@ class DiaProduct(BaseModel):
     image: str = Field(min_length=1)
     l2_category_description: str = Field(min_length=1)
 
+
 class DiaCart(BaseModel):
     postal_code: str = Field(min_length=1)
+
 
 class DiaPagination(BaseModel):
     page_number: int
     page_size: int
     total_pages: int
 
+
 class DiaSearchResponse(BaseModel):
-    cart: DiaCart                                   # obligatorio → RF-12 (warehouse), RF-21
-    pagination: DiaPagination                       # obligatorio → RF-12, RF-21
-    total_items: int                                # obligatorio → RF-12, RF-21
-    search_items: list[JsonValue]                   # obligatorio → RF-21; productos validados uno a uno (D1)
+    cart: DiaCart  # obligatorio → RF-12 (warehouse), RF-21
+    pagination: DiaPagination  # obligatorio → RF-12, RF-21
+    total_items: int  # obligatorio → RF-12, RF-21
+    search_items: list[JsonValue]  # obligatorio → RF-21; productos validados uno a uno (D1)
 ```
 
 Los tres precios son en realidad `Price = Annotated[FiniteFloat, BeforeValidator(reject_bool)]` (D2): aceptan `4.98` y `5` (enteros JSON) y rechazan `"abc"`, `true`, `NaN` e `inf`. Un `model_validator` de `DiaPrices` exige `strikethrough_price` cuando `is_club_price` es `true` (RF-11).
