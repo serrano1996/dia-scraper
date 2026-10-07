@@ -48,7 +48,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-7, RF-19, RF-20, RF-22
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T4 — Schemas de la API
+### [x] T4 — Schemas de la API
 - **RED:** `tests/models/test_product.py`:
   - `ProductQuery(postal_code=" 28001 ", term="  leche ")` → recortados; `page=1` y `page_size=50` por defecto;
   - `term="   "`, `term` de 101 caracteres → `ValidationError`; 100 caracteres → válido;
