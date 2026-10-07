@@ -11,13 +11,19 @@ from app.services.postal_code_sessions import RETIRE_GRACE_SECONDS, PostalCodeSe
 class FakeSession:
     """Stands in for `DiaSession`: records the PUTs and can fail or block."""
 
-    def __init__(self, error: Exception | None = None, gate: asyncio.Event | None = None) -> None:
+    def __init__(
+        self,
+        error: Exception | None = None,
+        gate: asyncio.Event | None = None,
+        close_error: Exception | None = None,
+    ) -> None:
         self.client = httpx.AsyncClient()
         self.postal_code = DEFAULT_POSTAL_CODE
         self.puts: list[str] = []
         self.closed = False
         self._error = error
         self._gate = gate
+        self._close_error = close_error
 
     async def set_postal_code(self, postal_code: str) -> None:
         self.puts.append(postal_code)
@@ -30,6 +36,8 @@ class FakeSession:
     async def aclose(self) -> None:
         self.closed = True
         await self.client.aclose()
+        if self._close_error is not None:
+            raise self._close_error
 
 
 class Factory:
@@ -277,3 +285,67 @@ async def test_the_session_a_caller_holds_stays_open_while_its_search_runs() -> 
     assert not held.closed
     assert not held.client.is_closed
     await pool.aclose()
+
+
+# --- Fixes from the fresh review (T14) ---
+
+
+async def test_retired_sessions_are_also_closed_when_no_new_session_is_created() -> None:
+    factory, clock = Factory(), Clock()
+    pool = make_pool(factory, clock)
+    stale = await pool.get("08001")
+    await pool.get("41001")
+    pool.discard("08001", stale)
+
+    clock.now += RETIRE_GRACE_SECONDS
+    await pool.get("41001")  # a known postal code: no creation
+
+    assert stale.closed
+    await pool.aclose()
+
+
+async def test_a_failing_close_of_a_retired_session_does_not_fail_the_get() -> None:
+    factory, clock = Factory(close_error=RuntimeError("broken socket")), Clock()
+    pool = make_pool(factory, clock)
+    first = await pool.get("08001")
+    second = await pool.get("41001")
+    pool.discard("08001", first)
+    pool.discard("41001", second)
+
+    clock.now += RETIRE_GRACE_SECONDS
+    session = await pool.get("07001")
+
+    assert session.postal_code == "07001"
+    assert first.closed and second.closed  # both tried, despite the first error
+    factory.created[-1]._close_error = None
+    await pool.aclose()
+
+
+async def test_aclose_closes_every_session_even_if_one_close_fails() -> None:
+    factory = Factory()
+    pool = make_pool(factory)
+    broken = await pool.get("08001")
+    broken._close_error = RuntimeError("broken socket")
+    healthy = await pool.get("41001")
+
+    await pool.aclose()
+
+    assert broken.closed
+    assert healthy.closed
+
+
+async def test_a_creation_that_ends_after_aclose_is_closed_not_kept() -> None:
+    # Shielded creations can outlive the request that started them (shutdown).
+    gate = asyncio.Event()
+    factory = Factory(gate=gate)
+    pool = make_pool(factory)
+    pending = asyncio.create_task(pool.get("08001"))
+    await settle()
+
+    await pool.aclose()
+    gate.set()
+
+    with pytest.raises(UpstreamUnavailableError):
+        await pending
+    assert factory.created[0].closed
+    assert pool.active_count == 0

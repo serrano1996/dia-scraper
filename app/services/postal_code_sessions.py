@@ -5,6 +5,7 @@ session moved to it with one `PUT` (Fase 0 §3). The pool keeps them so a known
 postal code costs no extra request. Session cookies stay in this process.
 """
 
+import logging
 import time
 from collections import OrderedDict
 from collections.abc import Callable
@@ -13,6 +14,7 @@ from typing import Protocol
 
 import httpx
 
+from app.exceptions import UpstreamUnavailableError
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.services.in_flight import InFlight
 
@@ -20,6 +22,8 @@ from app.services.in_flight import InFlight
 # worst search with the defaults is RETRY_MAX_ATTEMPTS x HTTP_TIMEOUT_SECONDS
 # plus the waits, about 32 s; raise this if those settings grow (plan-D6, R5).
 RETIRE_GRACE_SECONDS = 120
+
+logger = logging.getLogger(__name__)
 
 
 class PostalCodeSession(Protocol):
@@ -65,6 +69,7 @@ class PostalCodeSessions:
         # Least recently used first (plan-D5).
         self._entries: OrderedDict[str, _Entry] = OrderedDict()
         self._retired: list[_Retired] = []
+        self._closed = False
         self._creations: InFlight[PostalCodeSession] = InFlight()
 
     @property
@@ -78,7 +83,12 @@ class PostalCodeSessions:
         Age counts from creation (plan-D4). Raises what `set_postal_code` raises:
         `PostalCodeNotServedError`, `UpstreamUnavailableError`. A failed session
         is closed and not kept.
+
+        Tolerated race: for one loop turn after a creation ends, a caller can join
+        the finished task and get a session another caller has just retired. It
+        still works for the whole grace period (plan-D6).
         """
+        await self._close_expired_retired()
         entry = self._entries.get(postal_code)
         if entry is not None:
             if self._now() - entry.created_at < self._max_age:
@@ -99,13 +109,19 @@ class PostalCodeSessions:
             self._retire(postal_code)
 
     async def aclose(self) -> None:
-        """Close every session, active and retired (RF-14)."""
-        for entry in self._entries.values():
-            await entry.session.aclose()
-        for retired in self._retired:
-            await retired.session.aclose()
+        """Close every session, active and retired (RF-14).
+
+        Snapshots and empties the pool first: a creation still running (it is
+        shielded, so it can outlive its request) must not change what is being
+        closed, and finds the pool closed when it ends.
+        """
+        self._closed = True
+        sessions = [entry.session for entry in self._entries.values()]
+        sessions += [retired.session for retired in self._retired]
         self._entries.clear()
         self._retired.clear()
+        for session in sessions:
+            await _close(session)
 
     async def _create(self, postal_code: str) -> PostalCodeSession:
         session = self._new_session()
@@ -114,12 +130,14 @@ class PostalCodeSessions:
             if postal_code != DEFAULT_POSTAL_CODE:
                 await session.set_postal_code(postal_code)
         except BaseException:
-            await session.aclose()
+            await _close(session)
             raise
+        if self._closed:
+            await _close(session)
+            raise UpstreamUnavailableError("session pool closed")
         self._entries[postal_code] = _Entry(session=session, created_at=self._now())
         while len(self._entries) > self._max_sessions:
             self._retire(next(iter(self._entries)))
-        await self._close_expired_retired()
         return session
 
     def _retire(self, postal_code: str) -> None:
@@ -132,4 +150,12 @@ class PostalCodeSessions:
         expired = [r for r in self._retired if now - r.retired_at >= RETIRE_GRACE_SECONDS]
         self._retired = [r for r in self._retired if now - r.retired_at < RETIRE_GRACE_SECONDS]
         for retired in expired:
-            await retired.session.aclose()
+            await _close(retired.session)
+
+
+async def _close(session: PostalCodeSession) -> None:
+    """Close a session; a failure is logged, never raised: closing must not break a search."""
+    try:
+        await session.aclose()
+    except Exception as error:  # any close failure is only worth a log line
+        logger.warning("could not close a Dia session: %s", type(error).__name__)

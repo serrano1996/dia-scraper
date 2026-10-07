@@ -131,7 +131,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T11
 - **RF:** RF-1…RF-12
 
-### [ ] T13 — Docs vivas y prueba manual
+### [x] T13 — Docs vivas y prueba manual
 - **Hacer:** README (quitar la limitación del CP por defecto, añadir el `404` y las variables nuevas); `.env.example` (si el agente no puede escribirlo, pedírselo al usuario); prueba manual contra Dia real: `08001` (CP nuevo, `PUT` + búsqueda), `08001` otro término (sin `PUT`), `35001` (`404`) y `35001` otra vez (sin peticiones). Unas 3–4 peticiones reales, anotadas aquí.
 - **Depende:** T12
 - **RF:** RNF-5, criterios de finalización. **Fin de PR4.**
@@ -148,3 +148,16 @@ App real (`create_app()` + `lifespan` + `DiaSession` con su cliente real) contra
 | `35001`, `leche` | `404` en 2 ms | ninguna (cache negativa) |
 
 Total: 4 peticiones reales, sin bloqueos de Akamai. Claves en Redis al final: `postal_code:not_served:35001`, `search:08001:agua:1:5`, `search:08001:leche:1:5`.
+
+---
+
+## Revisión con contexto nuevo (2026-10-07)
+
+Revisión adversarial de `0805170..HEAD` (app y tests) antes del PR: 0 CRITICAL, 3 WARNING, 5 SUGGESTION. Los tres WARNING son del pool de sesiones; dos se corrigen en T14 y el tercero se documenta.
+
+### [x] T14 — Correcciones de la revisión
+- **RED:** en `tests/services/test_postal_code_sessions.py`: una creación que termina después de `aclose()` cierra su sesión y lanza `UpstreamUnavailableError`, sin quedar en el pool; `aclose()` cierra todas aunque una falle; un fallo al cerrar una retirada no rompe el `get` y las demás se cierran igual; las retiradas se cierran también cuando no se crea ninguna sesión nueva.
+- **GREEN:** `aclose()` marca el pool como cerrado, copia y vacía antes de cerrar; `_create` comprueba ese estado; los cierres pasan por `_close()`, que registra el fallo y no lo propaga; el barrido de retiradas se hace en cada `get`.
+- **Documentado, no corregido:** durante una vuelta del bucle tras terminar una creación, un llamante puede recibir una sesión recién retirada. Sigue funcionando durante la gracia de 120 s (plan-D6).
+- **No aplicadas:** un `PUT` `204` seguido de búsquedas que siempre responden con otro CP cuesta 2 `PUT` por petición antes del `502`, acotado por la repetición única (se revisará con la spec de anti-baneo); un Redis caído en `mark` convierte el `404` en `500` (degradación sin Redis, fuera de alcance por spec-D1). La lectura de la cache de búsquedas antes que la negativa es la de plan-D9.
+- **RF:** RF-13, RF-14
