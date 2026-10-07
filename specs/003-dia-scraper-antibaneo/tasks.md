@@ -51,7 +51,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** `app/services/rate_limiter.py` (plan-D2).
 - **RF:** RF-4, RF-5, RF-6
 
-### [ ] T7 — `OutboundGate`
+### [x] T7 — `OutboundGate`
 - **RED:** `tests/services/test_outbound.py`: `admit()` con enfriamiento activo → `CooldownActiveError` sin consumir hueco; con límite agotado → `OutboundRateLimitedError` y un WARNING con el nombre del límite; `blocked()` activa el enfriamiento y registra un WARNING con su duración solo la primera vez.
 - **GREEN:** `app/services/outbound.py` (plan-D7).
 - **RF:** RF-1, RF-2, RF-5, RF-11. **Fin de PR2.**
