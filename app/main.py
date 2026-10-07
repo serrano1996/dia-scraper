@@ -1,7 +1,7 @@
 """Application factory and lifespan: creates and closes the shared clients."""
 
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
 import redis.asyncio as redis
 from fastapi import FastAPI, Request
@@ -23,16 +23,16 @@ def create_redis(settings: Settings) -> redis.Redis:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """One HTTP client and one Redis client per process, closed on shutdown (RNF-1)."""
     settings = get_settings()
-    redis_client = create_redis(settings)
-    http_client = create_http_client(settings)
-    app.state.resources = AppResources(
-        settings=settings, redis=redis_client, http_client=http_client
-    )
-    try:
+    async with AsyncExitStack() as stack:
+        # Each client is closed even if building the next one fails.
+        redis_client = create_redis(settings)
+        stack.push_async_callback(redis_client.aclose)
+        http_client = create_http_client(settings)
+        stack.push_async_callback(http_client.aclose)
+        app.state.resources = AppResources(
+            settings=settings, redis=redis_client, http_client=http_client
+        )
         yield
-    finally:
-        await http_client.aclose()
-        await redis_client.aclose()
 
 
 def create_app() -> FastAPI:

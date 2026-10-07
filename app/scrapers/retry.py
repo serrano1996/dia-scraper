@@ -16,7 +16,7 @@ Sleep = Callable[[float], Awaitable[None]]
 
 def _is_akamai_block(response: httpx.Response) -> bool:
     """Akamai Bot Manager rejects a request with a 403 HTML page (Fase 0 §5)."""
-    content_type = response.headers.get("content-type", "")
+    content_type = response.headers.get("content-type", "").lower()
     return response.status_code == 403 and content_type.startswith("text/html")
 
 
@@ -29,7 +29,9 @@ def _raise_if_rejected(response: httpx.Response) -> None:
     status = response.status_code
     if _is_akamai_block(response):
         raise UpstreamBlockedError("blocked by Akamai (403 HTML)", status_code=status)
-    if 400 <= status < 500 and not _is_retryable(response):
+    # Besides 4xx, any 1xx or 3xx: httpx does not follow redirects, and a
+    # redirect (to a challenge page, say) is not the JSON we asked for.
+    if not response.is_success and not _is_retryable(response):
         raise UpstreamUnavailableError(f"status {status}", status_code=status)
 
 
@@ -48,7 +50,8 @@ async def send_with_retry(
     - 5xx, 429 and transport errors (timeouts included) are retried up to
       `max_attempts` attempts in total (spec 001 RF-17). The wait between attempt
       n and n+1 is `base_delay * 2 ** (n - 1)`.
-    - Any other 4xx: `UpstreamUnavailableError` at once, with its status (RF-18).
+    - Any other 4xx, and any 1xx or 3xx: `UpstreamUnavailableError` at once, with
+      its status (RF-18). Other request errors (decoding, redirects) too, unretried.
     - Exhausting the attempts raises `UpstreamUnavailableError` (RF-20), chained
       to the last transport error, if any: no httpx type leaves the scrapers (RF-22).
     """
@@ -60,6 +63,9 @@ async def send_with_retry(
         except httpx.TransportError as error:
             reason = f"transport error: {type(error).__name__}"
             last_error = error
+        except httpx.RequestError as error:
+            # Not transient (a body that cannot be decoded, a redirect loop): no retry.
+            raise UpstreamUnavailableError(f"request error: {type(error).__name__}") from error
         else:
             _raise_if_rejected(response)
             if not _is_retryable(response):

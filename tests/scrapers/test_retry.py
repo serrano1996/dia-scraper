@@ -147,3 +147,46 @@ async def test_exhausted_transport_errors_raise_a_domain_error_chained_to_the_ca
 
     assert not isinstance(exc_info.value, httpx.HTTPError)
     assert exc_info.value.__cause__ is timeout
+
+
+# --- Fixes from the fresh review (T22) ---
+
+
+@pytest.mark.parametrize("status_code", [101, 301, 302, 304])
+async def test_non_2xx_non_error_answers_are_rejected_at_once(status_code: int) -> None:
+    # httpx does not follow redirects by default: a 3xx (an Akamai challenge
+    # redirect, say) must not count as success.
+    send, sleep = FakeSend(response(status_code), response(200)), FakeSleep()
+
+    with pytest.raises(UpstreamUnavailableError) as exc_info:
+        await run(send, sleep)
+
+    assert exc_info.value.status_code == status_code
+    assert send.calls == 1
+
+
+async def test_akamai_block_is_detected_whatever_the_content_type_casing() -> None:
+    blocked = response(403, text=AKAMAI_ACCESS_DENIED, headers={"Content-Type": "Text/HTML"})
+
+    with pytest.raises(UpstreamBlockedError):
+        await run(FakeSend(blocked), FakeSleep())
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.DecodingError("bad gzip", request=REQUEST),
+        httpx.TooManyRedirects("loop", request=REQUEST),
+    ],
+    ids=["decoding", "redirects"],
+)
+async def test_non_transport_request_errors_become_domain_errors_without_retry(
+    error: Exception,
+) -> None:
+    send, sleep = FakeSend(error, response(200)), FakeSleep()
+
+    with pytest.raises(UpstreamUnavailableError) as exc_info:
+        await run(send, sleep)
+
+    assert exc_info.value.__cause__ is error
+    assert send.calls == 1

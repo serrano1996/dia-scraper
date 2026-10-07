@@ -4,10 +4,6 @@ from app.models.product import MAX_PAGE, MAX_PAGE_SIZE
 from app.services.pagination import DIA_MIN_PAGE_SIZE, DiaWindow, dia_window
 
 
-def test_dia_never_serves_less_than_30_products() -> None:
-    assert DIA_MIN_PAGE_SIZE == 30  # Fase 0 §1
-
-
 @pytest.mark.parametrize(
     ("page", "page_size", "expected"),
     [

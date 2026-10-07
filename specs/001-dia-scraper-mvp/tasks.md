@@ -270,3 +270,16 @@ App real (`create_app()` + `lifespan` + cliente HTTP real) contra `https://www.d
 | La misma otra vez (hit) | `200` en 1 ms, mismo `scraped_at`, 0 peticiones a Dia; clave `search:28041:leche:2:5` |
 
 Peticiones reales a Dia: 3 por la API más 4 de investigación del mínimo de 30. Sin bloqueos de Akamai.
+
+---
+
+## Revisión con contexto nuevo (2026-10-07)
+
+Revisión adversarial de `a3ea9f6..HEAD` (app y tests) antes del PR: 0 CRITICAL, 2 WARNING, 4 SUGGESTION. Los dos WARNING se verificaron (jerarquía de excepciones de httpx; `follow_redirects=False` por defecto) y se corrigen en T22.
+
+### [x] T22 — Correcciones de la revisión
+- **RED:** en `tests/scrapers/test_retry.py`: `101`, `301`, `302` y `304` → `UpstreamUnavailableError(status_code=…)` en el 1.er intento; `Content-Type: Text/HTML` en el `403` → `UpstreamBlockedError`; `httpx.DecodingError` y `httpx.TooManyRedirects` → `UpstreamUnavailableError` encadenada, sin reintento. En `tests/test_main.py`: si falla la creación del cliente HTTP, Redis se cierra igual.
+- **GREEN:** `retry.py` rechaza todo lo que no sea `2xx` ni reintentable, captura `httpx.RequestError` además de `TransportError` y compara el `Content-Type` en minúsculas; el `lifespan` usa `AsyncExitStack`.
+- **Refactor:** fuera el test tautológico `DIA_MIN_PAGE_SIZE == 30` (lo cubre el test de propiedad de `dia_window`).
+- **RF:** RF-18, RF-19, RF-22, RNF-1
+- **No aplicada:** registrar `reason` en el handler de `502` y aplicar `LOG_LEVEL`. El logging es fuera de alcance de la 001 (§8), como en Alcampo (su spec 003). Queda para la spec de logging.

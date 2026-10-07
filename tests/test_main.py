@@ -52,3 +52,20 @@ def test_lifespan_builds_and_closes_the_shared_clients(monkeypatch: pytest.Monke
 def test_resources_outside_the_lifespan_fail_clearly() -> None:
     with pytest.raises(RuntimeError, match="lifespan"):
         resources(create_app())
+
+
+def test_redis_is_closed_when_the_http_client_cannot_be_built(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    redis = SpyRedis()
+    monkeypatch.setattr(main, "create_redis", lambda settings: redis)
+
+    def broken_http_client(settings):
+        raise RuntimeError("cannot build the HTTP client")
+
+    monkeypatch.setattr(main, "create_http_client", broken_http_client)
+
+    with pytest.raises(RuntimeError, match="HTTP client"), TestClient(create_app()):
+        pass
+
+    assert redis.closed
