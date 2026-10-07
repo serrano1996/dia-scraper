@@ -29,7 +29,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **GREEN:** `app/exceptions.py`, `app/models/dia.py` (plan §3, plan-D10).
 - **RF:** RF-4
 
-### [ ] T3 — `DiaSession.set_postal_code`
+### [x] T3 — `DiaSession.set_postal_code`
 - **RED:** `tests/scrapers/test_dia_session.py`, con respx:
   - `204` → 1 `PUT` a `/api/v1/common-aggregator/save-shipping-address` con `new_postal_code=08001`, sin cuerpo; `session.postal_code == "08001"`;
   - el `PUT` lleva las cabeceras de Chrome y las cookies que dejó una respuesta previa (`session_id` sintético);
