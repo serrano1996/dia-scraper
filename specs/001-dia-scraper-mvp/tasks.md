@@ -141,7 +141,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-18, RF-19, RF-20, RF-22 (spec-D7)
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T12 — Scraper de búsqueda
+### [x] T12 — Scraper de búsqueda
 - **RED:** `tests/scrapers/test_dia_search.py`, con `respx`:
   - `search("leche", page=2, page_size=50)` → exactamente 1 llamada a `/api/v1/search-back/search/reduced` con `q=leche`, `page=2`, `page_size=50`; devuelve `DiaSearchResponse` de la fixture real;
   - `search("plátano", …)` → `q` llega codificado y se decodifica a `plátano`;
