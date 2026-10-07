@@ -27,7 +27,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** `app/core/logging.py` (plan-D1, D2, D3, D4).
 - **RF:** RF-1, RF-4, RF-18
 
-### [ ] T3 — Middleware de petición
+### [x] T3 — Middleware de petición
 - **RED:** `tests/middleware/test_request_context.py`, con una app mínima: inicio y fin en `INFO` con el mismo id y la duración; `X-Request-ID` en `200`, `422` y `500`; un `X-Request-ID` del cliente se ignora; una excepción → `500 {"detail": "Internal server error"}`, `ERROR` con traceback y sin el mensaje en el cuerpo; parámetros con `\n` → escapados con `%r`.
 - **GREEN:** `app/middleware/request_context.py` (plan-D5).
 - **RF:** RF-3, RF-4, RF-5, RF-6, RF-17. **Fin de PR1.**

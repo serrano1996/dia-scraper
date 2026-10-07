@@ -33,7 +33,8 @@ class _AppHandler(_StreamHandler):
     """Marks the handler installed by `configure_logging`, so it can be replaced alone."""
 
 
-def _install_request_id_factory() -> None:
+def install_request_id_factory() -> None:
+    """Give every `LogRecord` a `request_id` attribute (plan-D1). Idempotent."""
     global _installed_factory
     current = logging.getLogRecordFactory()
     if current is _installed_factory:
@@ -50,7 +51,7 @@ def _install_request_id_factory() -> None:
 
 def configure_logging(level: str, *, stream: TextIO | None = None) -> None:
     """Configure the root logger (spec 004 RF-1). Safe to call more than once."""
-    _install_request_id_factory()
+    install_request_id_factory()
 
     root = logging.getLogger()
     for handler in [h for h in root.handlers if isinstance(h, _AppHandler)]:
