@@ -1,6 +1,7 @@
 """End to end: real app, real lifespan, fakeredis, and Dia mocked with respx."""
 
 import httpx
+import pytest
 import respx
 
 from app.models.product import ProductSearchResponse
@@ -30,6 +31,8 @@ def test_miss_answers_200_from_a_single_call_to_dia(
         "page": "2",
         "page_size": "30",
     }
+    # Also proves `cache_keys` sees the app's Redis, so the "== []" checks below bite.
+    assert harness.cache_keys() == [b"search:28041:leche:2:30"]
 
 
 def test_requests_to_dia_carry_the_chrome_headers(
@@ -81,3 +84,104 @@ def test_a_search_without_results_answers_an_empty_list(
     assert response.status_code == 200
     assert response.json()["products"] == []
     assert response.json()["search"]["total_pages"] == 0
+
+
+# --- Validation and errors (T18) ---
+
+AKAMAI_403 = "<HTML><HEAD>\n<TITLE>Access Denied</TITLE>\n</HEAD><BODY>\n</BODY>\n</HTML>\n"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"term": "leche"},
+        {"postal_code": "28001"},
+        PARAMS | {"term": "   "},
+        PARAMS | {"term": "x" * 101},
+        PARAMS | {"postal_code": "2800"},
+        PARAMS | {"postal_code": "28001a"},
+        PARAMS | {"page": 0},
+        PARAMS | {"page": 21},
+        PARAMS | {"page_size": 0},
+        PARAMS | {"page_size": 101},
+    ],
+    ids=[
+        "no-postal-code",
+        "no-term",
+        "blank-term",
+        "long-term",
+        "short-postal-code",
+        "letter-in-postal-code",
+        "page-0",
+        "page-21",
+        "page-size-0",
+        "page-size-101",
+    ],
+)
+def test_invalid_queries_answer_422_without_touching_dia_or_redis(
+    harness: Harness, respx_mock: respx.MockRouter, params: dict
+) -> None:
+    route = mock_dia_search(respx_mock, json_body=load_fixture("dia_search_leche.json"))
+
+    response = harness.client.get(URL, params=params)
+
+    assert response.status_code == 422
+    assert route.call_count == 0
+    assert harness.cache_keys() == []
+
+
+def test_an_empty_page_past_the_first_answers_404_and_is_not_cached(
+    harness: Harness, respx_mock: respx.MockRouter
+) -> None:
+    body = load_fixture("dia_search_leche.json")
+    body["search_items"] = []
+    mock_dia_search(respx_mock, json_body=body)
+
+    response = harness.client.get(URL, params=PARAMS | {"page": 15})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Page out of range"}
+    assert harness.cache_keys() == []
+
+
+def test_an_akamai_block_answers_502_after_a_single_call(
+    harness: Harness, respx_mock: respx.MockRouter
+) -> None:
+    route = mock_dia_search(
+        respx_mock, status_code=403, text=AKAMAI_403, headers={"Content-Type": "text/html"}
+    )
+
+    response = harness.client.get(URL, params=PARAMS)
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Upstream service unavailable"}
+    assert route.call_count == 1
+    assert harness.cache_keys() == []
+
+
+def test_a_dia_404_answers_502_after_a_single_call(
+    harness: Harness, respx_mock: respx.MockRouter
+) -> None:
+    route = mock_dia_search(
+        respx_mock, status_code=404, text="<h1>404 - Not Found</h1><p>Bloqueado</p>"
+    )
+
+    response = harness.client.get(URL, params=PARAMS)
+
+    assert response.status_code == 502
+    assert "Bloqueado" not in response.text
+    assert route.call_count == 1
+    assert harness.cache_keys() == []
+
+
+def test_persistent_server_errors_answer_502_after_every_attempt(
+    harness: Harness, respx_mock: respx.MockRouter
+) -> None:
+    route = mock_dia_search(respx_mock, status_code=503, json_body={"error": "down"})
+
+    response = harness.client.get(URL, params=PARAMS)
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Upstream service unavailable"}
+    assert route.call_count == 3  # RETRY_MAX_ATTEMPTS default
+    assert harness.cache_keys() == []

@@ -218,7 +218,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-1, RF-3, RF-4, RF-6, RF-13
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T18 — Integración: validación y errores
+### [x] T18 — Integración: validación y errores
 - **RED:** en `test_products_endpoint.py`:
   - los casos de `422` de RF-2 → 0 llamadas respx y Redis vacío;
   - página 2 vacía → `404 Page out of range`, nada en Redis;

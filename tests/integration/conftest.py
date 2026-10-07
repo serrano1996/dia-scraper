@@ -27,6 +27,11 @@ class Harness:
     client: TestClient
     redis: FakeAsyncRedis
 
+    def cache_keys(self) -> list[bytes]:
+        """Redis keys, read on the app's own event loop (the TestClient portal)."""
+        assert self.client.portal is not None
+        return self.client.portal.call(self.redis.keys, "*")
+
 
 @pytest.fixture
 def harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[Harness]:
