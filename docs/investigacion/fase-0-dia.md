@@ -47,7 +47,8 @@ Accept: application/json, text/plain, */*
 - La sesión anónima nace en el **CP `28041`** (Madrid): `cart.postal_code: "28041"`.
 - La cabecera de respuesta `session_id` repite el valor de la cookie.
 - No hay token CSRF: el `PUT` de cambio de CP (§3) funciona solo con la cookie `session_id`.
-- ❌ Duración de la sesión `session_id` no medida.
+- **Duración de `session_id`:** `Expires` a **1 hora** de la petición (`HttpOnly; Secure; SameSite=Lax`), medido el 2026-10-07 al preparar la spec 002. Dia la reenvía en **todas** las respuestas, así que 🔶 probablemente la hora se renueva con cada uso (no verificado esperando a que caduque). Las de Akamai: `ak_bmsc` 2 h, `bm_sz` 4 h.
+- ❌ Qué pasa al usar una `session_id` caducada (¿sesión nueva en `28041` sin avisar?). Lo cubre la comprobación de `cart.postal_code` de la spec 002.
 - `session_id` es un identificador de sesión efímero, no una credencial de cuenta. No se commitea; los tests usarán valores sintéticos.
 
 ## 3. Localización ✅
