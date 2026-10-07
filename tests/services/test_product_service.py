@@ -5,6 +5,7 @@ import pytest
 from fakeredis import FakeAsyncRedis
 
 from app.core.config import Settings
+from app.exceptions import PageOutOfRangeError, UpstreamBlockedError, UpstreamUnavailableError
 from app.models.dia import DiaSearchResponse
 from app.models.product import ProductQuery
 from app.services.product_service import ProductService
@@ -48,7 +49,11 @@ async def http_client() -> httpx.AsyncClient:
 
 
 def make_service(
-    scraper: FakeScraper, redis: FakeAsyncRedis, http_client: httpx.AsyncClient
+    scraper: FakeScraper,
+    redis: FakeAsyncRedis,
+    http_client: httpx.AsyncClient,
+    *,
+    now: datetime = NOW,
 ) -> ProductService:
     settings = Settings(
         _env_file=None,
@@ -61,7 +66,7 @@ def make_service(
         cache=SearchCacheRepository(redis),
         http_client=http_client,
         settings=settings,
-        clock=lambda: NOW,
+        clock=lambda: now,
     )
 
 
@@ -142,3 +147,82 @@ async def test_a_miss_is_cached_with_the_configured_ttl(redis, http_client, fixt
     cached = await cache.get(postal_code="28041", term="leche", page=1, page_size=50)
     assert cached == response
     assert 0 < await redis.ttl("search:28041:leche:1:50") <= 600
+
+
+# --- Hit (T15) ---
+
+
+async def test_hit_does_not_call_dia_and_keeps_the_original_scraped_at(redis, http_client) -> None:
+    first = await make_service(FakeScraper(fixture_body()), redis, http_client).search(query())
+    later = datetime(2026, 10, 7, 10, 0, tzinfo=UTC)
+    scraper = FakeScraper(fixture_body())
+
+    response = await make_service(scraper, redis, http_client, now=later).search(query())
+
+    assert scraper.calls == []
+    assert response.search.scraped_at == first.search.scraped_at == NOW
+    assert response.products == first.products
+
+
+async def test_hit_answers_with_the_postal_code_and_term_of_the_current_request(
+    redis, http_client
+) -> None:
+    await make_service(FakeScraper(fixture_body()), redis, http_client).search(query())
+    scraper = FakeScraper(fixture_body())
+
+    response = await make_service(scraper, redis, http_client).search(
+        query(postal_code="08001", term="LECHE")
+    )
+
+    assert scraper.calls == []
+    assert response.search.postal_code == "08001"
+    assert response.search.term == "LECHE"
+
+
+# --- Page out of range (T15) ---
+
+
+def empty_page(page: int) -> dict:
+    body = fixture_body()
+    body["search_items"] = []
+    body["pagination"]["page_number"] = page
+    return body
+
+
+async def test_an_empty_page_past_the_first_is_out_of_range_and_not_cached(
+    redis, http_client
+) -> None:
+    scraper = FakeScraper(empty_page(2))
+
+    with pytest.raises(PageOutOfRangeError) as exc_info:
+        await make_service(scraper, redis, http_client).search(query(page=2))
+
+    assert exc_info.value.page == 2
+    assert await redis.keys("*") == []
+
+
+async def test_a_page_whose_products_are_all_broken_is_not_out_of_range(redis, http_client) -> None:
+    # Dia did send products: the page exists (plan-D8).
+    body = fixture_body()
+    body["search_items"] = [{"broken": True}, {"also": "broken"}]
+
+    response = await make_service(FakeScraper(body), redis, http_client).search(query(page=2))
+
+    assert response.products == []
+
+
+# --- Errors (T15) ---
+
+
+@pytest.mark.parametrize(
+    "error",
+    [UpstreamUnavailableError("down"), UpstreamBlockedError("akamai", status_code=403)],
+    ids=["unavailable", "blocked"],
+)
+async def test_upstream_errors_propagate_and_nothing_is_cached(
+    redis, http_client, error: Exception
+) -> None:
+    with pytest.raises(type(error)):
+        await make_service(FakeScraper(error=error), redis, http_client).search(query())
+
+    assert await redis.keys("*") == []

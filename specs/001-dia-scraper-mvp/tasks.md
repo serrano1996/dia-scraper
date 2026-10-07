@@ -181,7 +181,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-1, RF-6, RF-12, RF-14
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T15 — Servicio: hit, página fuera de rango y errores
+### [x] T15 — Servicio: hit, página fuera de rango y errores
 - **RED:** en `test_product_service.py`:
   - hit → 0 llamadas al scraper; `scraped_at` original; `postal_code` y `term` de la petición actual (otra mayúscula, otro CP);
   - página 2 con `search_items: []` → `PageOutOfRangeError(2)` y Redis vacío;

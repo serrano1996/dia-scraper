@@ -7,6 +7,7 @@ from typing import Protocol
 import httpx
 
 from app.core.config import Settings
+from app.exceptions import PageOutOfRangeError
 from app.mappers.product_mapper import map_search
 from app.models.dia import DiaSearchResponse
 from app.models.product import MAX_PAGE, ProductQuery, ProductSearchResponse, SearchMetadata
@@ -48,10 +49,33 @@ class ProductService:
         self._clock = clock
 
     async def search(self, query: ProductQuery) -> ProductSearchResponse:
-        """One page of results for `query.term` (RF-1, RF-12, RF-14)."""
+        """One page of results for `query.term` (RF-1, RF-7, RF-12..RF-16).
+
+        Raises `PageOutOfRangeError` past the last page, and lets upstream errors
+        through; neither is cached (RF-15).
+        """
+        cached = await self._cache.get(
+            # Every search uses Dia's default postal code in spec 001 (spec-D2, plan-D4).
+            postal_code=DEFAULT_POSTAL_CODE,
+            term=query.term,
+            page=query.page,
+            page_size=query.page_size,
+        )
+        if cached is not None:
+            # The entry is shared by every postal code and casing of the term:
+            # answer with the current request's, keep the original scraped_at (RF-16).
+            search = cached.search.model_copy(
+                update={"postal_code": query.postal_code, "term": query.term}
+            )
+            return cached.model_copy(update={"search": search})
+
         raw = await self._scraper.search(
             query.term, page=query.page, page_size=query.page_size, client=self._http_client
         )
+        # Raw items, not mapped products: a page whose products are all broken
+        # still exists (plan-D8).
+        if query.page > 1 and not raw.search_items:
+            raise PageOutOfRangeError(query.page)
         response = ProductSearchResponse(
             search=SearchMetadata(
                 postal_code=query.postal_code,
@@ -67,7 +91,6 @@ class ProductService:
             products=map_search(raw, base_url=self._base_url),
         )
         await self._cache.set(
-            # Every search uses Dia's default postal code in spec 001 (spec-D2, plan-D4).
             postal_code=DEFAULT_POSTAL_CODE,
             term=query.term,
             page=query.page,
