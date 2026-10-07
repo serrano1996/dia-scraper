@@ -46,7 +46,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** `app/services/cooldown.py` (plan-D3).
 - **RF:** RF-1, RF-3
 
-### [ ] T6 — Limitador de ventana deslizante
+### [x] T6 — Limitador de ventana deslizante
 - **RED:** `tests/services/test_rate_limiter.py` (fakeredis, reloj falso): `limit=2` → 2 `acquire` y el 3.º lanza `OutboundRateLimitedError`; al pasar la ventana vuelve a admitir; una entrada justo de `window` segundos ya no cuenta; claves distintas no se mezclan; `limit=0` nunca limita ni escribe en Redis; dos limitadores sobre el mismo Redis comparten la cuenta.
 - **GREEN:** `app/services/rate_limiter.py` (plan-D2).
 - **RF:** RF-4, RF-5, RF-6

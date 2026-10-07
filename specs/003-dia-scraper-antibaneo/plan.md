@@ -62,7 +62,7 @@ La cache de búsquedas y la negativa se leen **antes** de llegar a la puerta, as
 **D1 — La puerta se consulta en cada intento, dentro de `send_with_retry`.** `send_with_retry(..., gate: OutboundGate | None = None)`: `await gate.admit()` antes de cada `send()`, y `await gate.blocked()` antes de lanzar `UpstreamBlockedError`. Así los reintentos cuentan para el límite (RF-4) y un bloqueo en cualquier petición (búsqueda o `PUT`) activa el enfriamiento (RF-1), sin duplicar lógica en el scraper y en la sesión.
 - *Descartada:* comprobar la puerta en el servicio. No vería los reintentos ni el `PUT`, que ocurre dentro del pool.
 
-**D2 — Ventana deslizante sobre un sorted set**, como Alcampo (spec 008 plan-D3): `ZREMRANGEBYSCORE` de lo que ha salido de la ventana, `ZCARD`, y `ZADD` si cabe, en un `MULTI`/`EXEC` con `WATCH` para que dos instancias no se cuelen a la vez. Un miembro único por petición (`uuid4`). `limit=0` no toca Redis.
+**D2 — Ventana deslizante sobre un sorted set**, como Alcampo (spec 008 plan-D3): `ZREMRANGEBYSCORE` de lo que ha salido de la ventana, `ZADD` de la petición, `ZCARD` y `EXPIRE`, en un solo `MULTI`/`EXEC`; si la cuenta supera el límite, se quita su propio miembro y se rechaza (así un rechazo no consume cupo). *Cambio al implementar (T6):* el plan decía `WATCH`; la forma de Alcampo es igual de atómica y más simple. Un miembro único por petición (`uuid4`). `limit=0` no toca Redis.
 - *Descartada:* ventana fija con `INCR`/`EXPIRE`. Deja pasar el doble del límite en la frontera entre ventanas, justo la ráfaga que se quiere evitar.
 
 **D3 — Enfriamiento con `SET akamai:cooldown 1 NX EX <segundos>`.** `NX` hace que un segundo bloqueo no lo alargue (spec-D2). `is_active` = `EXISTS`.
@@ -101,7 +101,7 @@ La cache de búsquedas y la negativa se leen **antes** de llegar a la puerta, as
 | R1 | Los límites por defecto son estimaciones: pueden ser demasiado bajos (`502` evitables) o demasiado altos (no evitan un bloqueo) | Configurables; los WARNING de RF-11 dan los datos para ajustarlos |
 | R2 | 5 min de enfriamiento pueden quedarse cortos si Akamai bloquea más | Configurable; el creciente queda preparado como siguiente paso (spec-D2) |
 | R3 | Redis caído → `500` (también en la puerta) | Fuera de alcance, como en las specs 001–002 |
-| R4 | `WATCH`/`MULTI` en fakeredis | fakeredis soporta transacciones; si algún caso no, se para y se avisa |
+| R4 | `MULTI`/`EXEC` en fakeredis | fakeredis soporta transacciones; si algún caso no, se para y se avisa |
 
 ## 7. Secuencia y entrega
 
