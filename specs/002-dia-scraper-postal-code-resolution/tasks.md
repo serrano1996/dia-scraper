@@ -120,7 +120,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T10
 - **RF:** RF-4, RF-14
 
-### [ ] T12 — Integración
+### [x] T12 — Integración
 - **RED:** `tests/integration/`, con respx para el `PUT` y la búsqueda:
   - CP nuevo → 1 `PUT` + 1 búsqueda; otro término del mismo CP → 1 búsqueda; la misma búsqueda → 0;
   - `28041` → 0 `PUT`;

@@ -20,6 +20,7 @@ from app.main import create_app
 
 DIA_BASE_URL = "https://dia.test"
 SEARCH_URL = f"{DIA_BASE_URL}/api/v1/search-back/search/reduced"
+PUT_URL = f"{DIA_BASE_URL}/api/v1/common-aggregator/save-shipping-address"
 
 
 @dataclass
@@ -61,3 +62,8 @@ def mock_dia_search(
     else:
         response = httpx.Response(status_code, json=json_body, headers=headers or {})
     return respx_mock.get(SEARCH_URL).mock(return_value=response)
+
+
+def mock_dia_put(respx_mock: respx.MockRouter, *responses: httpx.Response) -> respx.Route:
+    """Register `save-shipping-address`, answering each call with the next response."""
+    return respx_mock.put(PUT_URL).mock(side_effect=list(responses))
