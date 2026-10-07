@@ -41,7 +41,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 
 ## PR2 — Enfriamiento, limitador y puerta
 
-### [ ] T5 — Enfriamiento
+### [x] T5 — Enfriamiento
 - **RED:** `tests/services/test_cooldown.py` (fakeredis): inactivo al principio; `activate()` lo activa con TTL ≤ `AKAMAI_COOLDOWN_SECONDS` y devuelve `True`; un segundo `activate()` devuelve `False` y no cambia el TTL.
 - **GREEN:** `app/services/cooldown.py` (plan-D3).
 - **RF:** RF-1, RF-3
