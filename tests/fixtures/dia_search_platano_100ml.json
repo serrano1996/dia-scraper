@@ -1,0 +1,270 @@
+{
+  "cart": {
+    "postal_code": "28041",
+    "total_amount": 0,
+    "total_units": 0
+  },
+  "facets": [
+    {
+      "field": "bio",
+      "field_name": "BIO",
+      "filters": [
+        {
+          "count": 6,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "brand_description",
+      "field_name": "Marca",
+      "filters": [
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Actimel"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Auara"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Be plus"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Corny"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Danonino"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Dia"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Dia Imaqe"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Dia Láctea"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Dia Naturmundo"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Dia Saborfera"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "El afortunado"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Fructis"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Gran Dia"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Hero"
+        },
+        {
+          "count": 8,
+          "enabled": true,
+          "title": "Nestlé"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Smileat"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Tortolines"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Vía nature"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "caffeine_free",
+      "field_name": "Sin cafeina",
+      "filters": [
+        {
+          "count": 28,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "custom_gluten_free",
+      "field_name": "Sin gluten",
+      "filters": [
+        {
+          "count": 7,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 41,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "dia_brand",
+      "field_name": "Marca Dia",
+      "filters": [
+        {
+          "count": 28,
+          "enabled": true,
+          "title": "false"
+        },
+        {
+          "count": 20,
+          "enabled": true,
+          "title": "true"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "lactose_free",
+      "field_name": "Sin lactosa",
+      "filters": [
+        {
+          "count": 12,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "nuts_free",
+      "field_name": "Sin frutos secos",
+      "filters": [
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 9,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "salt_free",
+      "field_name": "Bajo en sal",
+      "filters": [
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 6,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    }
+  ],
+  "locale": "es",
+  "login_status": "ANONYMOUS",
+  "pagination": {
+    "page_number": 1,
+    "page_size": 500,
+    "total_pages": 1
+  },
+  "query_id": "a7d6d20720283a493342106f7931acd6",
+  "search_items": [
+    {
+      "brand": "Dia Imaqe",
+      "brand_type": "R",
+      "dia_brand": true,
+      "display_name": "Mascarilla platáno Dia Imaqe Fruit Revolution 300 ml",
+      "image": "/product_images/290122/290122_ISO_0_ES.jpg",
+      "l1_category_description": "Cabello y perfumería",
+      "l2_category_description": "Acondicionadores y mascarillas",
+      "object_id": "290122",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "100 ML.",
+        "price": 2.89,
+        "price_per_unit": 0.96,
+        "strikethrough_price": 2.89
+      },
+      "sku_id": "290122",
+      "units_in_cart": 0,
+      "units_in_stock": 27,
+      "url": "/cabello-y-perfumeria/acondicionadores-y-mascarillas/p/290122"
+    }
+  ],
+  "sort": {
+    "direction": "desc",
+    "field": "rating"
+  },
+  "suggestions": {
+    "words": [
+      {
+        "formatted": "+ actimel",
+        "original": "actimel plátano"
+      },
+      {
+        "formatted": "+ yogolino",
+        "original": "yogolino plátano"
+      },
+      {
+        "formatted": "+ actimel fresa",
+        "original": "actimel fresa plátano"
+      }
+    ]
+  },
+  "total_items": 48
+}

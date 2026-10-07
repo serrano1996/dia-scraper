@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "ProductOut": {
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "image_url": {
+          "title": "Image Url",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "price_format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Price Format"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "price_format",
+        "image_url",
+        "category"
+      ],
+      "title": "ProductOut",
+      "type": "object"
+    },
+    "SearchMeta": {
+      "properties": {
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "page_size": {
+          "title": "Page Size",
+          "type": "integer"
+        },
+        "postal_code": {
+          "title": "Postal Code",
+          "type": "string"
+        },
+        "scraped_at": {
+          "format": "date-time",
+          "title": "Scraped At",
+          "type": "string"
+        },
+        "strategy_used": {
+          "title": "Strategy Used",
+          "type": "string"
+        },
+        "term": {
+          "title": "Term",
+          "type": "string"
+        },
+        "total_pages": {
+          "title": "Total Pages",
+          "type": "integer"
+        },
+        "total_results": {
+          "title": "Total Results",
+          "type": "integer"
+        },
+        "warehouse": {
+          "title": "Warehouse",
+          "type": "string"
+        }
+      },
+      "required": [
+        "postal_code",
+        "term",
+        "warehouse",
+        "strategy_used",
+        "scraped_at",
+        "total_results",
+        "page",
+        "page_size",
+        "total_pages"
+      ],
+      "title": "SearchMeta",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "products": {
+      "items": {
+        "$ref": "#/$defs/ProductOut"
+      },
+      "title": "Products",
+      "type": "array"
+    },
+    "search": {
+      "$ref": "#/$defs/SearchMeta"
+    }
+  },
+  "required": [
+    "search",
+    "products"
+  ],
+  "title": "ProductSearchResponse",
+  "type": "object"
+}

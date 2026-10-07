@@ -1,0 +1,194 @@
+{
+  "cart": {
+    "postal_code": "28041",
+    "total_amount": 0,
+    "total_units": 0
+  },
+  "facets": [
+    {
+      "field": "brand_description",
+      "field_name": "Marca",
+      "filters": [
+        {
+          "count": 7,
+          "enabled": true,
+          "title": "Ariel"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Asevi"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Cloromax"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Colon"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Dia"
+        },
+        {
+          "count": 14,
+          "enabled": true,
+          "title": "Dia Super Paco"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Dixan"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Estrella"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Micolor"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Norit"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Omino bianco"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Puntomatic"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Skip"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Wipp Express"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "custom_gluten_free",
+      "field_name": "Sin gluten",
+      "filters": [
+        {
+          "count": 40,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "dia_brand",
+      "field_name": "Marca Dia",
+      "filters": [
+        {
+          "count": 24,
+          "enabled": true,
+          "title": "false"
+        },
+        {
+          "count": 16,
+          "enabled": true,
+          "title": "true"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "nuts_free",
+      "field_name": "Sin frutos secos",
+      "filters": [
+        {
+          "count": 25,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "presentation",
+      "field_name": "Tipo de producto",
+      "filters": [
+        {
+          "count": 10,
+          "enabled": true,
+          "title": "Detergente en pastillas"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Detergente en polvo"
+        },
+        {
+          "count": 19,
+          "enabled": true,
+          "title": "Detergente líquido"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Lavar a mano"
+        }
+      ],
+      "selected_count": 0
+    }
+  ],
+  "locale": "es",
+  "login_status": "ANONYMOUS",
+  "pagination": {
+    "page_number": 1,
+    "page_size": 500,
+    "total_pages": 1
+  },
+  "query_id": "0e09f1e2893c8c8216ea56b9830143aa",
+  "search_items": [
+    {
+      "brand": "Dia Super Paco",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Detergente líquido marsella Dia Super Paco 61 lavados",
+      "image": "/product_images/273998/273998_ISO_0_ES.jpg",
+      "l1_category_description": "Limpieza y hogar",
+      "l2_category_description": "Detergentes",
+      "object_id": "273998",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "LAVADO",
+        "price": 4.27,
+        "price_per_unit": 0.07,
+        "strikethrough_price": 4.27
+      },
+      "sku_id": "273998",
+      "units_in_cart": 0,
+      "units_in_stock": 0,
+      "url": "/limpieza-y-hogar/detergentes/p/273998"
+    }
+  ],
+  "sort": {
+    "direction": "desc",
+    "field": "rating"
+  },
+  "suggestions": {},
+  "total_items": 40
+}

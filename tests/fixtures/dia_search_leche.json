@@ -1,0 +1,832 @@
+{
+  "cart": {
+    "postal_code": "28041",
+    "total_amount": 0,
+    "total_units": 0
+  },
+  "facets": [
+    {
+      "field": "bio",
+      "field_name": "BIO",
+      "filters": [
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "brand_description",
+      "field_name": "Marca",
+      "filters": [
+        {
+          "count": 7,
+          "enabled": true,
+          "title": "Alpro"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Artiach"
+        },
+        {
+          "count": 35,
+          "enabled": true,
+          "title": "Asturiana"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Babaria"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Bicentury"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Brioche Pasquier"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Cacaolat"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Cadbury"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Celta"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "ColaCao"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Corny"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Covap"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Cuétara"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Danet"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Delial"
+        },
+        {
+          "count": 8,
+          "enabled": true,
+          "title": "Dia"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Dia Arom'arte"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Dia Cafetería"
+        },
+        {
+          "count": 10,
+          "enabled": true,
+          "title": "Dia Caprichoso"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Dia Dulce Noel"
+        },
+        {
+          "count": 7,
+          "enabled": true,
+          "title": "Dia Imaqe"
+        },
+        {
+          "count": 44,
+          "enabled": true,
+          "title": "Dia Láctea"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Dia Naturmundo"
+        },
+        {
+          "count": 8,
+          "enabled": true,
+          "title": "Dia Saborfera"
+        },
+        {
+          "count": 18,
+          "enabled": true,
+          "title": "Dia Temptation"
+        },
+        {
+          "count": 19,
+          "enabled": true,
+          "title": "Dia Vegedia"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Diasol"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Disney"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Dolca"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Don Simón"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Dulcesol"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "El Molino de Dia"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Flora"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Galleteca de Dia"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Gran Dia"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Grupo de lucas"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Gullón"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Haagen Dazs"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Hero"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Hero Baby"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Huesitos"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Ideal"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Kaiku"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Kellogg's"
+        },
+        {
+          "count": 9,
+          "enabled": true,
+          "title": "Kinder"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Kit Kat"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Knoppers"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "La lechera"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Lacasa"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Lacasitos"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Lactovit"
+        },
+        {
+          "count": 6,
+          "enabled": true,
+          "title": "Lauki"
+        },
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "Lindt"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "M&M's"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Madriz"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Magnum"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Maltesers"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Marcilla"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Mardel"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Mikado"
+        },
+        {
+          "count": 23,
+          "enabled": true,
+          "title": "Milka"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Mousline"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Nativa"
+        },
+        {
+          "count": 6,
+          "enabled": true,
+          "title": "Nescafé"
+        },
+        {
+          "count": 30,
+          "enabled": true,
+          "title": "Nestlé"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Nidina"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Nivea"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Nocilla"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Oceanix"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Ovonatur"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Palmolive"
+        },
+        {
+          "count": 25,
+          "enabled": true,
+          "title": "Pascual"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Pazo de Vilane"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Principe"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Proactiv"
+        },
+        {
+          "count": 23,
+          "enabled": true,
+          "title": "Puleva"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Reese's"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Reina"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Tiger Khan"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Tirma"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Toblerone"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Trapa"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Tulipán"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Valor"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Weikis"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Yfood"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Yosoy"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "caffeine_free",
+      "field_name": "Sin cafeina",
+      "filters": [
+        {
+          "count": 323,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "custom_gluten_free",
+      "field_name": "Sin gluten",
+      "filters": [
+        {
+          "count": 117,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 300,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "dia_brand",
+      "field_name": "Marca Dia",
+      "filters": [
+        {
+          "count": 279,
+          "enabled": true,
+          "title": "false"
+        },
+        {
+          "count": 138,
+          "enabled": true,
+          "title": "true"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "lactose_free",
+      "field_name": "Sin lactosa",
+      "filters": [
+        {
+          "count": 248,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 44,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "milk_type",
+      "field_name": "Tipo de leche",
+      "filters": [
+        {
+          "count": 29,
+          "enabled": true,
+          "title": "Desnatada"
+        },
+        {
+          "count": 26,
+          "enabled": true,
+          "title": "Entera"
+        },
+        {
+          "count": 35,
+          "enabled": true,
+          "title": "Semidesnatada"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "nuts_free",
+      "field_name": "Sin frutos secos",
+      "filters": [
+        {
+          "count": 117,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 36,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "presentation",
+      "field_name": "Tipo de producto",
+      "filters": [
+        {
+          "count": 33,
+          "enabled": true,
+          "title": "Bebida vegetal"
+        },
+        {
+          "count": 10,
+          "enabled": true,
+          "title": "Chocolate"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Fresa"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Helado bombón"
+        },
+        {
+          "count": 7,
+          "enabled": true,
+          "title": "Mantequilla"
+        },
+        {
+          "count": 8,
+          "enabled": true,
+          "title": "Margarina"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Tarrina"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Vainilla"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "salt_free",
+      "field_name": "Bajo en sal",
+      "filters": [
+        {
+          "count": 211,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 31,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "spf",
+      "field_name": "Factor de protección",
+      "filters": [
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "30"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "50"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "50+"
+        }
+      ],
+      "selected_count": 0
+    }
+  ],
+  "locale": "es",
+  "login_status": "ANONYMOUS",
+  "pagination": {
+    "page_number": 1,
+    "page_size": 30,
+    "total_pages": 14
+  },
+  "query_id": "d005cc121ecef1157c59b18fcbfb9797",
+  "search_items": [
+    {
+      "brand": "Dia Láctea",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Leche semidesnatada Dia Láctea pack 6 x 1 L",
+      "image": "/product_images/504P6/504P6_ISO_0_ES.jpg",
+      "l1_category_description": "Huevos, leche y mantequilla",
+      "l2_category_description": "Leche",
+      "object_id": "504P6",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "LITRO",
+        "price": 4.98,
+        "price_per_unit": 0.83,
+        "strikethrough_price": 4.98
+      },
+      "sku_id": "504P6",
+      "units_in_cart": 0,
+      "units_in_stock": 1014,
+      "url": "/huevos-leche-y-mantequilla/leche/p/504P6"
+    },
+    {
+      "brand": "Dia Láctea",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Leche entera Dia Láctea pack 6 x 1 L",
+      "image": "/product_images/608P6/608P6_ISO_0_ES.jpg",
+      "l1_category_description": "Huevos, leche y mantequilla",
+      "l2_category_description": "Leche",
+      "object_id": "608P6",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "LITRO",
+        "price": 5.76,
+        "price_per_unit": 0.96,
+        "strikethrough_price": 5.76
+      },
+      "sku_id": "608P6",
+      "units_in_cart": 0,
+      "units_in_stock": 636,
+      "url": "/huevos-leche-y-mantequilla/leche/p/608P6"
+    },
+    {
+      "allergens": [
+        {
+          "name": "Sin lactosa"
+        }
+      ],
+      "brand": "Dia Láctea",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Leche semidesnatada sin lactosa Dia Láctea pack 6 x 1 L",
+      "image": "/product_images/130063P6/130063P6_ISO_0_ES.jpg",
+      "l1_category_description": "Huevos, leche y mantequilla",
+      "l2_category_description": "Leche sin lactosa y enriquecidas",
+      "object_id": "130063P6",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "LITRO",
+        "price": 5.64,
+        "price_per_unit": 0.94,
+        "strikethrough_price": 5.64
+      },
+      "product_info": "Sin lactosa",
+      "sku_id": "130063P6",
+      "stamp_code": "4",
+      "stamp_color": "#007491",
+      "stamp_description": "Mejor valorado",
+      "stamp_text_color": "#FFFFFF",
+      "units_in_cart": 0,
+      "units_in_stock": 470,
+      "url": "/huevos-leche-y-mantequilla/leche-sin-lactosa-y-enriquecidas/p/130063P6"
+    }
+  ],
+  "sort": {
+    "direction": "desc",
+    "field": "rating"
+  },
+  "suggestions": {
+    "words": [
+      {
+        "formatted": "+ entera",
+        "original": "leche entera"
+      },
+      {
+        "formatted": "+ sin lactosa",
+        "original": "leche sin lactosa"
+      },
+      {
+        "formatted": "+ evaporada",
+        "original": "leche evaporada"
+      },
+      {
+        "formatted": "+ en polvo",
+        "original": "leche en polvo"
+      },
+      {
+        "formatted": "+ infantil",
+        "original": "leche infantil"
+      },
+      {
+        "formatted": "+ avena",
+        "original": "leche avena"
+      },
+      {
+        "formatted": "+ asturiana",
+        "original": "leche asturiana"
+      },
+      {
+        "formatted": "+ bebe",
+        "original": "leche bebe"
+      },
+      {
+        "formatted": "+ sin",
+        "original": "leche sin"
+      },
+      {
+        "formatted": "+ crecimiento",
+        "original": "leche crecimiento"
+      },
+      {
+        "formatted": "+ para lactantes",
+        "original": "leche para lactantes"
+      },
+      {
+        "formatted": "+ formula",
+        "original": "leche formula"
+      },
+      {
+        "formatted": "+ evaporada para cocinar",
+        "original": "leche evaporada para cocinar"
+      },
+      {
+        "formatted": "+ almendras",
+        "original": "leche almendras"
+      },
+      {
+        "formatted": "+ soja",
+        "original": "leche soja"
+      },
+      {
+        "formatted": "+ coco",
+        "original": "leche coco"
+      },
+      {
+        "formatted": "+ pascual",
+        "original": "leche pascual"
+      },
+      {
+        "formatted": "+ puleva",
+        "original": "leche puleva"
+      },
+      {
+        "formatted": "+ calcio",
+        "original": "leche calcio"
+      },
+      {
+        "formatted": "+ leche",
+        "original": "leche leche"
+      }
+    ]
+  },
+  "total_items": 417
+}

@@ -1,0 +1,491 @@
+{
+  "cart": {
+    "postal_code": "28041",
+    "total_amount": 0,
+    "total_units": 0
+  },
+  "facets": [
+    {
+      "field": "brand_description",
+      "field_name": "Marca",
+      "filters": [
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Aldelis"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Bicentury"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Bonnatur"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Brekkies"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Campofrío"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Casa Tarradellas"
+        },
+        {
+          "count": 9,
+          "enabled": true,
+          "title": "Dia Al Punto"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Dia Naturmundo"
+        },
+        {
+          "count": 27,
+          "enabled": true,
+          "title": "Dia Nuestra Alacena"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Dia Snack Maniac"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Dr. Oetker"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "El Molino de Dia"
+        },
+        {
+          "count": 5,
+          "enabled": true,
+          "title": "Elpozo"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Gallina Blanca"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Hero"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "La Cocinera"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "La piara"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Lm"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Navidul"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Pringles"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Ruffles"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Selección de Dia"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Smileat"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Snatt's"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Tendilla"
+        },
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Villar"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "caffeine_free",
+      "field_name": "Sin cafeina",
+      "filters": [
+        {
+          "count": 72,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "custom_gluten_free",
+      "field_name": "Sin gluten",
+      "filters": [
+        {
+          "count": 31,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 53,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "dia_brand",
+      "field_name": "Marca Dia",
+      "filters": [
+        {
+          "count": 38,
+          "enabled": true,
+          "title": "false"
+        },
+        {
+          "count": 46,
+          "enabled": true,
+          "title": "true"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "lactose_free",
+      "field_name": "Sin lactosa",
+      "filters": [
+        {
+          "count": 35,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 29,
+          "enabled": true,
+          "title": "SI"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "nuts_free",
+      "field_name": "Sin frutos secos",
+      "filters": [
+        {
+          "count": 4,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "presentation",
+      "field_name": "Tipo de producto",
+      "filters": [
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Croquetas"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Rebozados"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "salt_free",
+      "field_name": "Bajo en sal",
+      "filters": [
+        {
+          "count": 47,
+          "enabled": true,
+          "title": "NO"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "No Aplica"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "size",
+      "field_name": "Formato",
+      "filters": [
+        {
+          "count": 15,
+          "enabled": true,
+          "title": "Lonchas"
+        },
+        {
+          "count": 1,
+          "enabled": true,
+          "title": "Pieza"
+        },
+        {
+          "count": 3,
+          "enabled": true,
+          "title": "Tacos"
+        }
+      ],
+      "selected_count": 0
+    },
+    {
+      "field": "soup_type",
+      "field_name": "Tipos de caldo",
+      "filters": [
+        {
+          "count": 2,
+          "enabled": true,
+          "title": "Carne y pollo"
+        }
+      ],
+      "selected_count": 0
+    }
+  ],
+  "locale": "es",
+  "login_status": "ANONYMOUS",
+  "pagination": {
+    "page_number": 1,
+    "page_size": 500,
+    "total_pages": 1
+  },
+  "query_id": "87eaaba850711062e8aa1b9d5f54a81a",
+  "search_items": [
+    {
+      "allergens": [
+        {
+          "name": "Sin gluten"
+        },
+        {
+          "name": "Sin lactosa"
+        }
+      ],
+      "brand": "Dia Nuestra Alacena",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Jamón Serrano Dia Nuestra Alacena 200 g",
+      "headband_promotion": "exclusive_offer",
+      "image": "/product_images/274051/274051_ISO_0_ES.jpg",
+      "l1_category_description": "Charcutería",
+      "l2_category_description": "Jamón serrano",
+      "object_id": "274051",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 20,
+        "is_club_price": true,
+        "is_promo_price": true,
+        "measure_unit": "KILO",
+        "price": 2.79,
+        "price_per_unit": 13.96,
+        "strikethrough_price": 3.49
+      },
+      "product_info": "Sin lactosa",
+      "promotions": [
+        {
+          "description": "20% DTO. JAMÓN SERRANO NUESTRA ALACENA 200 G",
+          "only_club_dia": true,
+          "short_description": "JAMÓN SERRANO N.ALAC"
+        }
+      ],
+      "sku_id": "274051",
+      "units_in_cart": 0,
+      "units_in_stock": 454,
+      "url": "/charcuteria/jamon-serrano/p/274051"
+    },
+    {
+      "allergens": [
+        {
+          "name": "Sin gluten"
+        },
+        {
+          "name": "Sin lactosa"
+        }
+      ],
+      "brand": "Dia Nuestra Alacena",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Mini taquitos de jamón curado Dia Nuestra Alacena 2 x 75 g",
+      "image": "/product_images/274059/274059_ISO_0_ES.jpg",
+      "l1_category_description": "Charcutería",
+      "l2_category_description": "Jamón serrano",
+      "object_id": "274059",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "KILO",
+        "price": 2.21,
+        "price_per_unit": 14.73,
+        "strikethrough_price": 2.21
+      },
+      "product_info": "Sin lactosa",
+      "sku_id": "274059",
+      "units_in_cart": 0,
+      "units_in_stock": 211,
+      "url": "/charcuteria/jamon-serrano/p/274059"
+    },
+    {
+      "allergens": [
+        {
+          "name": "Sin gluten"
+        },
+        {
+          "name": "Sin lactosa"
+        }
+      ],
+      "brand": "Dia Nuestra Alacena",
+      "brand_type": "D",
+      "dia_brand": true,
+      "display_name": "Jamón cocido extra 97% Dia Nuestra Alacena 150 g",
+      "headband_promotion": "exclusive_offer",
+      "image": "/product_images/273737/273737_ISO_0_ES.jpg",
+      "l1_category_description": "Charcutería",
+      "l2_category_description": "Jamón cocido",
+      "object_id": "273737",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 25,
+        "is_club_price": false,
+        "is_promo_price": true,
+        "measure_unit": "KILO",
+        "price": 1.49,
+        "price_per_unit": 9.93,
+        "strikethrough_price": 1.99
+      },
+      "product_info": "Sin lactosa",
+      "promotions": [
+        {
+          "description": "SOLO A 1,49 EUR JAMÓN 97% NTRA .ALACENA 150 G",
+          "short_description": "JAMÓN COCID.DIA 150G"
+        }
+      ],
+      "sku_id": "273737",
+      "stamp_code": "4",
+      "stamp_color": "#007491",
+      "stamp_description": "Mejor valorado",
+      "stamp_text_color": "#FFFFFF",
+      "units_in_cart": 0,
+      "units_in_stock": 487,
+      "url": "/charcuteria/jamon-cocido/p/273737"
+    },
+    {
+      "allergens": [
+        {
+          "name": "Sin gluten"
+        },
+        {
+          "name": "Sin lactosa"
+        }
+      ],
+      "brand": "Smileat",
+      "brand_type": "N",
+      "display_name": "Puré de cocido con ternera y jamón Smileat 220 g",
+      "image": "/product_images/308293/308293_ISO_0_ES.jpg",
+      "l1_category_description": "Infantil",
+      "l2_category_description": "Potitos y tarritos",
+      "object_id": "308293",
+      "prices": {
+        "currency": "EUR",
+        "discount_percentage": 0,
+        "is_club_price": false,
+        "is_promo_price": false,
+        "measure_unit": "100 GR.",
+        "price": 2.59,
+        "price_per_unit": 1.18,
+        "strikethrough_price": 2.59
+      },
+      "product_info": "Sin lactosa",
+      "sku_id": "308293",
+      "units_in_cart": 0,
+      "units_in_stock": 11,
+      "url": "/infantil/potitos-y-tarritos/p/308293"
+    }
+  ],
+  "sort": {
+    "direction": "desc",
+    "field": "rating"
+  },
+  "suggestions": {
+    "words": [
+      {
+        "formatted": "+ jamon-cocido",
+        "original": "jamón jamon-cocido"
+      },
+      {
+        "formatted": "+ cocido",
+        "original": "jamón cocido"
+      },
+      {
+        "formatted": "+ curado",
+        "original": "jamón curado"
+      },
+      {
+        "formatted": "+ cocido extra",
+        "original": "jamón cocido extra"
+      },
+      {
+        "formatted": "+ cocido extra dia",
+        "original": "jamón cocido extra dia"
+      },
+      {
+        "formatted": "+ iberitos",
+        "original": "jamón iberitos"
+      },
+      {
+        "formatted": "+ pizza",
+        "original": "pizza jamón"
+      }
+    ]
+  },
+  "total_items": 84
+}

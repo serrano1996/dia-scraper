@@ -1,0 +1,7 @@
+{
+  "code": 206,
+  "message": {
+    "no_service": "No service for supplied postal code"
+  },
+  "type": "VALIDATION_ERROR"
+}

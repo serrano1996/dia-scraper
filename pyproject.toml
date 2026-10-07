@@ -1,0 +1,70 @@
+[project]
+name = "dia-scraper"
+version = "0.1.0"
+description = "Async REST API that scrapes, processes and serves Dia product data."
+readme = "README.md"
+requires-python = ">=3.11"
+# Upper bound at the next major version (for 0.x packages, <1): a new major
+# must be a decision, not a surprise in the next build (alcampo-scraper spec 006 RF-10).
+dependencies = [
+    "fastapi>=0.141,<1",
+    "pydantic>=2,<3",
+    "pydantic-settings>=2,<3",
+    "httpx>=0.28,<1",
+    "redis>=8,<9",
+    "uvicorn[standard]>=0.53,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+    "pytest-asyncio>=1,<2",
+    "pytest-cov>=7,<8",
+    "respx>=0.23,<1",
+    "fakeredis>=2,<3",
+    "ruff>=0.16,<1",
+    "mypy>=2,<3",
+    # Starlette's test client uses it and warns with plain httpx (alcampo-scraper spec 006 RF-12).
+    "httpx2>=2,<3",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "ASYNC", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+# Tests share helpers as `tests.…` (doubles, the integration harness). Plain
+# `pytest`, as CI runs it, does not put the root on sys.path; `python -m pytest`
+# does, which hid the problem locally.
+pythonpath = ["."]
+# Any warning fails the suite: a deprecation is caught the day it appears
+# (alcampo-scraper spec 006 RF-11). No exceptions are needed today.
+filterwarnings = ["error"]
+
+# Strict type checking of the application code (alcampo-scraper spec 006 RF-3, spec-D1).
+[tool.mypy]
+files = ["app"]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
