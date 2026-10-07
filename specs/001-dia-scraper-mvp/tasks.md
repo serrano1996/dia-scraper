@@ -85,10 +85,10 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-9, RF-10 (spec-D5)
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T7 — Mapeo de un producto
+### [x] T7 — Mapeo de un producto
 - **RED:** `test_map_product_*`:
   - 1.er producto de `dia_search_leche.json` → `Product(id="504P6", name="Leche semidesnatada Dia Láctea pack 6 x 1 L", price=4.98, price_format="0.83 €/L", image_url="https://www.dia.es/product_images/504P6/504P6_ISO_0_ES.jpg", category="Leche")`;
-  - `dia_search_jamon_promos.json`: producto Club → `price=3.49`, `price_format=None`; promoción para todos → `price=1.49` y su `price_format` normal; producto normal → `price=3.4`;
+  - `dia_search_jamon_promos.json`: producto Club → `price=3.49`, `price_format=None`; promoción para todos → `price=1.49` y su `price_format` normal; producto normal (`274059`) → `price=2.21`;
   - las fixtures `huevos_units`, `detergente_lavado` y `platano_100ml` → el sufijo esperado;
   - `image_url` se construye con el `base_url` recibido (sin doble `/`).
 - **GREEN:** `map_product(raw: DiaProduct, *, base_url: str) -> Product`.

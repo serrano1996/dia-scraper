@@ -3,6 +3,9 @@
 import logging
 from types import MappingProxyType
 
+from app.models.dia import DiaProduct
+from app.models.product import Product
+
 logger = logging.getLogger(__name__)
 
 # `measure_unit` -> suffix of `price_format`. Only units seen live (spec-D5,
@@ -27,3 +30,25 @@ def format_unit_price(price_per_unit: float, measure_unit: str) -> str | None:
         logger.warning("unknown measure unit %r: price_format set to null", measure_unit)
         return None
     return f"{price_per_unit:.2f} €/{suffix}"
+
+
+def map_product(raw: DiaProduct, *, base_url: str) -> Product:
+    """Map one validated Dia product to the API schema (RF-8, RF-10)."""
+    prices = raw.prices
+    # DiaPrices guarantees `strikethrough_price` whenever `is_club_price` is true.
+    if prices.is_club_price and prices.strikethrough_price is not None:
+        # `price` is the Club Dia card price; everyone else pays `strikethrough_price`,
+        # and Dia's `price_per_unit` follows the card price, so it is dropped (spec-D3, D8).
+        price = prices.strikethrough_price
+        price_format = None
+    else:
+        price = prices.price
+        price_format = format_unit_price(prices.price_per_unit, prices.measure_unit)
+    return Product(
+        id=raw.object_id,
+        name=raw.display_name,
+        price=price,
+        price_format=price_format,
+        image_url=f"{base_url.rstrip('/')}/{raw.image.lstrip('/')}",
+        category=raw.l2_category_description,
+    )

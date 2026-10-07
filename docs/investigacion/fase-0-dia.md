@@ -193,7 +193,7 @@ Fixture `dia_search_jamon_promos.json`:
 | `dia_search_leche.json` | búsqueda real "leche" (`reduced`, página 1), recortada a 3 productos |
 | `dia_search_no_results.json` | búsqueda real sin resultados |
 | `dia_search_jamon_promos.json` | 4 productos reales: normal, promoción, promoción Club Dia y `100 GR.` |
-| `dia_search_huevos_units.json` | `DOCENA` y `UNIDAD` |
+| `dia_search_huevos_units.json` | `DOCENA` (en "huevos" no salió ningún `UNIDAD`) |
 | `dia_search_detergente_lavado.json` | `LAVADO` |
 | `dia_search_platano_100ml.json` | `100 ML.` |
 | `dia_save_shipping_address_no_service.json` | cuerpo del `206` de CP sin servicio |
