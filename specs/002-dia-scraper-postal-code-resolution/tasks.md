@@ -50,7 +50,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 
 ## PR2 — Pool de sesiones
 
-### [ ] T5 — `InFlight` y creación de sesiones
+### [x] T5 — `InFlight` y creación de sesiones
 - **RED:**
   - `tests/services/test_in_flight.py` (adaptado de Alcampo): llamadas simultáneas con la misma clave → 1 ejecución, mismo resultado; la excepción llega a todos; cancelar un llamante no cancela la tarea; tras terminar, la clave se olvida.
   - `tests/services/test_postal_code_sessions.py`, con factoría de sesiones falsa y reloj falso: `get("08001")` crea y fija el CP; un 2.º `get` devuelve la misma sesión sin otro `PUT`; `get("28041")` no hace `PUT`; 5 `get("08001")` simultáneos → 1 sesión; un `PostalCodeNotServedError` o `UpstreamUnavailableError` se propaga, la sesión fallida se cierra y no se guarda.
