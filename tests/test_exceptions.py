@@ -1,6 +1,8 @@
 import app.exceptions
 from app.exceptions import (
+    CooldownActiveError,
     DiaScraperError,
+    OutboundRateLimitedError,
     PageOutOfRangeError,
     PostalCodeNotServedError,
     UpstreamBlockedError,
@@ -45,3 +47,10 @@ def test_postal_code_not_served_is_an_answer_not_an_upstream_failure() -> None:
     assert isinstance(error, DiaScraperError)
     assert not isinstance(error, UpstreamUnavailableError)
     assert error.postal_code == "35001"
+
+
+def test_anti_ban_refusals_are_upstream_failures_but_not_blocks() -> None:
+    # Both mean "we chose not to call Dia": the standard 502, never retried (spec 003).
+    for error in (CooldownActiveError("cooldown"), OutboundRateLimitedError("limit")):
+        assert isinstance(error, UpstreamUnavailableError)
+        assert not isinstance(error, UpstreamBlockedError)

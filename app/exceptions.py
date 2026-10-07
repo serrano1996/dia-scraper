@@ -29,6 +29,21 @@ class UpstreamBlockedError(UpstreamUnavailableError):
     """
 
 
+class CooldownActiveError(UpstreamUnavailableError):
+    """Raised when a request to Dia is refused because an Akamai cooldown is active.
+
+    After a block the service stops calling Dia for a while (spec 003 RF-1, RF-2).
+    We chose not to call Dia: never retried, the standard 502 (plan-D4).
+    """
+
+
+class OutboundRateLimitedError(UpstreamUnavailableError):
+    """Raised when a request to Dia would exceed an outbound limit (spec 003 RF-5, RF-7).
+
+    No request is sent. The standard 502, never retried (plan-D4).
+    """
+
+
 class PageOutOfRangeError(DiaScraperError):
     """Raised when the requested page is past the last one Dia has for the term.
 

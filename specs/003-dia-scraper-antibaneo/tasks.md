@@ -22,7 +22,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** `app/core/config.py`.
 - **RF:** RF-1, RF-4, RF-6, RF-7, RF-9
 
-### [ ] T2 — Excepciones
+### [x] T2 — Excepciones
 - **RED:** `tests/test_exceptions.py`: `CooldownActiveError` y `OutboundRateLimitedError` son `UpstreamUnavailableError` (y no `UpstreamBlockedError`).
 - **GREEN:** `app/exceptions.py` (plan-D4).
 - **RF:** RF-2, RF-5, RF-7
