@@ -24,7 +24,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** — (infraestructura; plan R4)
 - **Hecho cuando:** la instalación termina sin errores, `pytest -q` pasa 1 test, `ruff check .` y `mypy` salen limpios. Si alguna dependencia falla en el Python local, **parar y avisar** (R4).
 
-### [ ] T2 — `Settings`
+### [x] T2 — `Settings`
 - **RED:** `tests/core/test_config.py`:
   - sin `DIA_BASE_URL` → `ValidationError`;
   - sin `REDIS_URL` → `ValidationError`;
