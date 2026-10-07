@@ -37,7 +37,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-23
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T3 — Excepciones de dominio
+### [x] T3 — Excepciones de dominio
 - **RED:** `tests/test_exceptions.py`:
   - `UpstreamUnavailableError("x", status_code=404)` es subclase de `DiaScraperError`, expone `.reason == "x"` y `.status_code == 404`; sin `status_code` → `None`;
   - `UpstreamBlockedError` es subclase de `UpstreamUnavailableError`;
