@@ -4,7 +4,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.dependencies import get_product_service
-from app.exceptions import PageOutOfRangeError, UpstreamBlockedError, UpstreamUnavailableError
+from app.exceptions import (
+    PageOutOfRangeError,
+    PostalCodeNotServedError,
+    UpstreamBlockedError,
+    UpstreamUnavailableError,
+)
 from app.main import create_app
 from app.models.product import Product, ProductQuery, ProductSearchResponse, SearchMetadata
 
@@ -100,3 +105,12 @@ def test_page_out_of_range_answers_404() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Page out of range"}
+
+
+def test_a_postal_code_dia_does_not_serve_answers_404() -> None:
+    error = PostalCodeNotServedError("35001")
+
+    response = client_with(FakeService(error)).get(URL, params=PARAMS | {"postal_code": "35001"})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Postal code not served by Dia"}

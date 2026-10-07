@@ -112,7 +112,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 
 ## PR4 — Cableado, integración y docs
 
-### [ ] T11 — Estado, `lifespan` y handler `404`
+### [x] T11 — Estado, `lifespan` y handler `404`
 - **RED:**
   - (adelantado a T8: el `lifespan` crea el pool y lo cierra al apagar; `AppResources` ya no tiene `http_client`)
   - `tests/api/test_products_route.py`: `PostalCodeNotServedError` → `404 {"detail": "Postal code not served by Dia"}`.

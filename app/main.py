@@ -10,7 +10,11 @@ from fastapi.responses import JSONResponse
 from app.api.v1.products import router as products_router
 from app.core.config import Settings, get_settings
 from app.core.state import AppResources
-from app.exceptions import PageOutOfRangeError, UpstreamUnavailableError
+from app.exceptions import (
+    PageOutOfRangeError,
+    PostalCodeNotServedError,
+    UpstreamUnavailableError,
+)
 from app.scrapers.dia_session import DiaSession
 from app.scrapers.http_client import create_http_client
 from app.services.postal_code_sessions import PostalCodeSessions
@@ -49,6 +53,13 @@ def create_app() -> FastAPI:
         # Our own detail, never Dia's body nor `exc.reason` (RF-20). Covers
         # `UpstreamBlockedError` too (RF-19).
         return JSONResponse(status_code=502, content={"detail": "Upstream service unavailable"})
+
+    @app.exception_handler(PostalCodeNotServedError)
+    async def postal_code_not_served(
+        request: Request, exc: PostalCodeNotServedError
+    ) -> JSONResponse:
+        # An answer, not a failure: our own detail, never Dia's text (spec 002 RF-4).
+        return JSONResponse(status_code=404, content={"detail": "Postal code not served by Dia"})
 
     @app.exception_handler(PageOutOfRangeError)
     async def page_out_of_range(request: Request, exc: PageOutOfRangeError) -> JSONResponse:
