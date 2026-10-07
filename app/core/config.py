@@ -28,6 +28,20 @@ class Settings(BaseSettings):
     # How long a postal code Dia does not serve is answered 404 without asking
     # Dia again (spec 002 spec-D5).
     postal_code_negative_cache_ttl_seconds: int = Field(default=86400, gt=0)
+    # Anti-ban (spec 003). None of these limits is a measured threshold: Dia was
+    # never seen blocking by rate (Fase 0 §5). They are prudence, tuned with the
+    # warnings logged when they trigger.
+    # No request to Dia for this long after an Akamai block, across instances.
+    akamai_cooldown_seconds: int = Field(default=300, gt=0)
+    # At most this many requests to Dia (retries and PUTs included) per window,
+    # across instances. 0 disables the limit.
+    dia_rate_limit: int = Field(default=30, ge=0)
+    dia_rate_window_seconds: int = Field(default=60, gt=0)
+    # At most this many new Dia sessions (PUTs) per window. 0 disables the limit.
+    new_session_limit: int = Field(default=10, ge=0)
+    new_session_window_seconds: int = Field(default=600, gt=0)
+    # Random extra wait, up to this many seconds, added to every retry. 0 = none.
+    retry_jitter_max_s: float = Field(default=0.3, ge=0)
 
 
 @lru_cache

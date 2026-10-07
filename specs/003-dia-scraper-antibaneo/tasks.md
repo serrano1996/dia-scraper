@@ -1,6 +1,6 @@
 # Tasks 003 — Medidas antibaneo
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 4 PRs encadenados (stacked). Cada PR deja la suite en verde.
 
@@ -17,7 +17,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 
 ## PR1 — Configuración, excepciones, jitter y `Retry-After`
 
-### [ ] T1 — Settings
+### [x] T1 — Settings
 - **RED:** `tests/core/test_config.py`: defaults de las 6 variables de plan §3; el entorno las sobrescribe; `AKAMAI_COOLDOWN_SECONDS`, `DIA_RATE_WINDOW_SECONDS` y `NEW_SESSION_WINDOW_SECONDS` a `0` → `ValidationError`; `DIA_RATE_LIMIT`, `NEW_SESSION_LIMIT` y `RETRY_JITTER_MAX_S` aceptan `0` y rechazan negativos.
 - **GREEN:** `app/core/config.py`.
 - **RF:** RF-1, RF-4, RF-6, RF-7, RF-9

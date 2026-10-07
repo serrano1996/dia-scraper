@@ -1,6 +1,6 @@
 # Plan 003 — Medidas antibaneo
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Fecha:** 2026-10-07
 - **Spec:** [spec.md](spec.md) (aprobada). Sus decisiones se citan como **spec-D1…spec-D8**; las de este plan, **D1…**.
 

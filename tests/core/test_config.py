@@ -16,6 +16,12 @@ OPTIONAL = [
     "SESSION_MAX_AGE_SECONDS",
     "MAX_SESSIONS",
     "POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS",
+    "AKAMAI_COOLDOWN_SECONDS",
+    "DIA_RATE_LIMIT",
+    "DIA_RATE_WINDOW_SECONDS",
+    "NEW_SESSION_LIMIT",
+    "NEW_SESSION_WINDOW_SECONDS",
+    "RETRY_JITTER_MAX_S",
 ]
 
 
@@ -58,6 +64,13 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.session_max_age_seconds == 3000
     assert settings.max_sessions == 100
     assert settings.postal_code_negative_cache_ttl_seconds == 86400
+    # Spec 003: anti-ban (spec-D1, D3, D4, D5).
+    assert settings.akamai_cooldown_seconds == 300
+    assert settings.dia_rate_limit == 30
+    assert settings.dia_rate_window_seconds == 60
+    assert settings.new_session_limit == 10
+    assert settings.new_session_window_seconds == 600
+    assert settings.retry_jitter_max_s == 0.3
 
 
 def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -92,6 +105,9 @@ def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None
         "SESSION_MAX_AGE_SECONDS",
         "MAX_SESSIONS",
         "POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS",
+        "AKAMAI_COOLDOWN_SECONDS",
+        "DIA_RATE_WINDOW_SECONDS",
+        "NEW_SESSION_WINDOW_SECONDS",
     ],
 )
 def test_non_positive_values_fail(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
@@ -119,3 +135,42 @@ def test_get_settings_returns_the_same_instance(monkeypatch: pytest.MonkeyPatch)
     set_required(monkeypatch)
 
     assert get_settings() is get_settings()
+
+
+@pytest.mark.parametrize(
+    ("name", "attribute"),
+    [
+        ("DIA_RATE_LIMIT", "dia_rate_limit"),
+        ("NEW_SESSION_LIMIT", "new_session_limit"),
+        ("RETRY_JITTER_MAX_S", "retry_jitter_max_s"),
+    ],
+)
+def test_zero_disables_but_negative_fails(
+    monkeypatch: pytest.MonkeyPatch, name: str, attribute: str
+) -> None:
+    set_required(monkeypatch)
+    monkeypatch.setenv(name, "0")
+    assert getattr(Settings(_env_file=None), attribute) == 0
+
+    monkeypatch.setenv(name, "-1")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None)
+
+
+def test_the_environment_overrides_the_anti_ban_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    set_required(monkeypatch)
+    for name, value in {
+        "AKAMAI_COOLDOWN_SECONDS": "120",
+        "DIA_RATE_LIMIT": "5",
+        "DIA_RATE_WINDOW_SECONDS": "10",
+        "NEW_SESSION_LIMIT": "2",
+        "NEW_SESSION_WINDOW_SECONDS": "30",
+        "RETRY_JITTER_MAX_S": "0.1",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    settings = Settings(_env_file=None)
+
+    assert (settings.akamai_cooldown_seconds, settings.dia_rate_limit) == (120, 5)
+    assert (settings.dia_rate_window_seconds, settings.new_session_limit) == (10, 2)
+    assert (settings.new_session_window_seconds, settings.retry_jitter_max_s) == (30, 0.1)
