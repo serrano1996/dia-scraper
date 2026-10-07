@@ -111,8 +111,8 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 
 ## PR2 — Cliente HTTP, reintentos y scraper
 
-### [ ] T9 — Factoría del cliente HTTP
-- **RED:** `tests/scrapers/test_http_client.py`: `create_http_client(settings)` devuelve un `httpx.AsyncClient` con `base_url` = `DIA_BASE_URL`, `timeout` = `HTTP_TIMEOUT_SECONDS` y todas las cabeceras de plan-D12; la versión mayor de Chrome del `User-Agent` es la misma que la de `sec-ch-ua`; `Referer` es `DIA_BASE_URL` + `/`. Se cierra con `aclose()`.
+### [x] T9 — Factoría del cliente HTTP
+- **RED:** `tests/scrapers/test_http_client.py`: `create_http_client(settings)` devuelve un `httpx.AsyncClient` con `base_url` = `DIA_BASE_URL`, `timeout` = `HTTP_TIMEOUT_SECONDS` y todas las cabeceras de plan-D12; la versión mayor de Chrome del `User-Agent` es la misma que la de `sec-ch-ua`; el `User-Agent` es Chrome 155; `Referer` es la constante `https://www.dia.es/` aunque `DIA_BASE_URL` sea otra. Se cierra con `aclose()`.
 - **GREEN:** `app/scrapers/http_client.py`.
 - **Depende:** T2
 - **RF:** RF-4, RNF-3

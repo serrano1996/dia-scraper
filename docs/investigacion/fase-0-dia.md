@@ -116,6 +116,7 @@ Es la página estándar de Akamai. Llega en la **primera** petición si el clien
 - **Regla:** un User-Agent de Chrome **sin** cabeceras propias de Chrome (client hints o `Sec-Fetch-*`) delata al bot. Hay que enviar un conjunto **coherente** con el User-Agent.
 - `curl` de Windows (Schannel) falla incluso con todas las cabeceras: Akamai también mira la huella TLS. La de `httpx` (OpenSSL) pasa.
 - **Ritmo:** 12 peticiones a 3 s y 15 a 1 s (términos distintos, sin cookies previas en la segunda) → todas `200`. No se forzó más para no quemar la IP. Akamai devuelve las cookies `_abck`/`bm_sv`, que su JS de sensor actualizaría en un navegador; sin ejecutar ese JS seguimos recibiendo `200`.
+- **Versión de Chrome:** la Fase 0 usó Chrome 129. El 2026-10-07 (al empezar la T9) se probó también el perfil de Chrome 155, el de Alcampo (`User-Agent` y `sec-ch-ua` con la versión 155): `200`. ✅
 - **No hay `429`, `Retry-After` ni `RateLimit-*`** en ninguna respuesta.
 - 🔶 Riesgo: Akamai Bot Manager puede endurecer la regla (exigir la cookie `_abck` validada, que requiere ejecutar su JS) sin aviso. Superarlo exigiría navegador, fuera de la constitución.
 
