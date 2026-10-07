@@ -83,7 +83,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **RED:** `tests/test_main.py`: `AppResources` tiene `gate`; el pool usa el limitador de sesiones; una `DiaSession` creada por el pool y el scraper del provider comparten la misma puerta.
 - **GREEN:** `state.py`, `dependencies.py`, `main.py` (plan-D8).
 
-### [ ] T12 — Integración
+### [x] T12 — Integración
 - **RED:** `tests/integration/test_antiban.py`:
   - `403` de Akamai → `502`; la siguiente búsqueda no cacheada → `502` con 0 peticiones; una cacheada → `200`; un CP en cache negativa → `404`;
   - `DIA_RATE_LIMIT=2`: la 3.ª búsqueda no cacheada → `502` sin petición;
