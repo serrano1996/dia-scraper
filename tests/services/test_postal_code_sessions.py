@@ -186,7 +186,7 @@ async def test_discard_retires_that_session() -> None:
     pool = make_pool(factory)
     stale = await pool.get("08001")
 
-    await pool.discard("08001", stale)
+    pool.discard("08001", stale)
     fresh = await pool.get("08001")
 
     assert fresh is not stale
@@ -201,7 +201,7 @@ async def test_discard_leaves_a_newer_session_of_the_same_postal_code_alone() ->
     clock.now += 3000
     new = await pool.get("08001")
 
-    await pool.discard("08001", old)
+    pool.discard("08001", old)
 
     assert await pool.get("08001") is new
     await pool.aclose()
@@ -211,7 +211,7 @@ async def test_retired_sessions_are_closed_once_the_grace_period_is_over() -> No
     factory, clock = Factory(), Clock()
     pool = make_pool(factory, clock)
     stale = await pool.get("08001")
-    await pool.discard("08001", stale)
+    pool.discard("08001", stale)
 
     clock.now += RETIRE_GRACE_SECONDS - 1
     await pool.get("41001")  # creating a session sweeps the retired ones
@@ -227,10 +227,53 @@ async def test_aclose_closes_active_and_retired_sessions() -> None:
     factory = Factory()
     pool = make_pool(factory)
     stale = await pool.get("08001")
-    await pool.discard("08001", stale)
+    pool.discard("08001", stale)
     active = await pool.get("41001")
 
     await pool.aclose()
 
     assert stale.closed
     assert active.closed
+
+
+# --- Edges (T7) ---
+
+
+async def test_with_room_for_one_session_two_alternating_postal_codes_keep_one_active() -> None:
+    factory = Factory()
+    pool = make_pool(factory, max_sessions=1)
+
+    for postal_code in ["08001", "41001", "08001", "41001"]:
+        session = await pool.get(postal_code)
+        assert session.postal_code == postal_code
+        assert pool.active_count == 1
+
+    assert len(factory.created) == 4
+    await pool.aclose()
+
+
+async def test_discarding_a_session_the_pool_no_longer_has_is_harmless() -> None:
+    factory = Factory()
+    pool = make_pool(factory, max_sessions=1)
+    dropped = await pool.get("08001")
+    kept = await pool.get("41001")  # retires 08001's session
+
+    pool.discard("08001", dropped)
+    pool.discard("99999", dropped)
+
+    assert await pool.get("41001") is kept
+    await pool.aclose()
+
+
+async def test_the_session_a_caller_holds_stays_open_while_its_search_runs() -> None:
+    # A search that got 08001's session keeps a usable client even if the pool
+    # drops it meanwhile (plan-D6).
+    factory = Factory()
+    pool = make_pool(factory, max_sessions=1)
+    held = await pool.get("08001")
+
+    await pool.get("41001")
+
+    assert not held.closed
+    assert not held.client.is_closed
+    await pool.aclose()

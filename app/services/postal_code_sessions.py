@@ -67,6 +67,11 @@ class PostalCodeSessions:
         self._retired: list[_Retired] = []
         self._creations: InFlight[PostalCodeSession] = InFlight()
 
+    @property
+    def active_count(self) -> int:
+        """Sessions currently handed out, never more than `max_sessions` (RF-13)."""
+        return len(self._entries)
+
     async def get(self, postal_code: str) -> PostalCodeSession:
         """The session for `postal_code`, created (with its `PUT`) if missing or too old.
 
@@ -83,7 +88,7 @@ class PostalCodeSessions:
         session, _ = await self._creations.run(postal_code, lambda: self._create(postal_code))
         return session
 
-    async def discard(self, postal_code: str, session: PostalCodeSession) -> None:
+    def discard(self, postal_code: str, session: PostalCodeSession) -> None:
         """Drop `session` if it is still the one kept for `postal_code` (spec 002 RF-9).
 
         A newer session of the same postal code is left alone: another search

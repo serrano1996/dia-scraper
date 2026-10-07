@@ -69,7 +69,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T5
 - **RF:** RF-9, RF-13, RF-14
 
-### [ ] T7 — Refactor del pool y cobertura de bordes
+### [x] T7 — Refactor del pool y cobertura de bordes
 - **RED:** `MAX_SESSIONS=1` con dos CPs alternos → nunca más de 1 activa; un `discard` de una sesión que ya no está en el pool no falla.
 - **GREEN/Refactor:** lo mínimo; revisar la complejidad cognitiva (Sonar) del pool.
 - **Depende:** T6
