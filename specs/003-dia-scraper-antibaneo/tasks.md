@@ -70,7 +70,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** `DiaSearchScraper(gate=…, jitter_max=…)`, `DiaSession(gate=…)`.
 - **RF:** RF-1, RF-2, RF-4
 
-### [ ] T10 — Límite de sesiones nuevas en el pool
+### [x] T10 — Límite de sesiones nuevas en el pool
 - **RED:** `test_postal_code_sessions.py`: con `NEW_SESSION_LIMIT=1`, el 2.º CP nuevo → `OutboundRateLimitedError`, sin `PUT`; un CP con sesión vigente no consume ni se ve afectado; `28041` no consume; renovar por edad consume.
 - **GREEN:** `PostalCodeSessions(session_limiter=…)` (plan-D5).
 - **RF:** RF-7, RF-8. **Fin de PR3.**

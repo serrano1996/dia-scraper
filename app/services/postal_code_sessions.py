@@ -14,9 +14,10 @@ from typing import Protocol
 
 import httpx
 
-from app.exceptions import UpstreamUnavailableError
+from app.exceptions import OutboundRateLimitedError, UpstreamUnavailableError
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.services.in_flight import InFlight
+from app.services.rate_limiter import RateLimiter
 
 # How long a retired session stays open: a search may still be using it. The
 # worst search with the defaults is RETRY_MAX_ATTEMPTS x HTTP_TIMEOUT_SECONDS
@@ -61,6 +62,7 @@ class PostalCodeSessions:
         max_age_seconds: int,
         max_sessions: int,
         now: Callable[[], float] = time.monotonic,
+        session_limiter: RateLimiter | None = None,
     ) -> None:
         self._new_session = new_session
         self._max_age = max_age_seconds
@@ -70,6 +72,8 @@ class PostalCodeSessions:
         self._entries: OrderedDict[str, _Entry] = OrderedDict()
         self._retired: list[_Retired] = []
         self._closed = False
+        # New sessions (each one a PUT) per window, renewals included (spec 003 RF-7, RF-8).
+        self._session_limiter = session_limiter
         self._creations: InFlight[PostalCodeSession] = InFlight()
 
     @property
@@ -124,6 +128,9 @@ class PostalCodeSessions:
             await _close(session)
 
     async def _create(self, postal_code: str) -> PostalCodeSession:
+        if postal_code != DEFAULT_POSTAL_CODE:
+            # Before building anything: a refused postal code costs no client and no PUT.
+            await self._admit_new_session()
         session = self._new_session()
         try:
             # The anonymous session is born in Dia's default postal code (spec-D6).
@@ -139,6 +146,19 @@ class PostalCodeSessions:
         while len(self._entries) > self._max_sessions:
             self._retire(next(iter(self._entries)))
         return session
+
+    async def _admit_new_session(self) -> None:
+        if self._session_limiter is None:
+            return
+        try:
+            await self._session_limiter.acquire()
+        except OutboundRateLimitedError:
+            logger.warning(
+                "outbound limit reached limit=%s max=%d",
+                self._session_limiter.name,
+                self._session_limiter.limit,
+            )
+            raise
 
     def _retire(self, postal_code: str) -> None:
         """Stop handing out the session; it is closed later, once no search can be using it."""

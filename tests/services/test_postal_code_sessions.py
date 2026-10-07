@@ -1,11 +1,18 @@
 import asyncio
+import logging
 
 import httpx
 import pytest
+from fakeredis import FakeAsyncRedis
 
-from app.exceptions import PostalCodeNotServedError, UpstreamUnavailableError
+from app.exceptions import (
+    OutboundRateLimitedError,
+    PostalCodeNotServedError,
+    UpstreamUnavailableError,
+)
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.services.postal_code_sessions import RETIRE_GRACE_SECONDS, PostalCodeSessions
+from app.services.rate_limiter import RateLimiter
 
 
 class FakeSession:
@@ -61,12 +68,25 @@ class Clock:
         return self.now
 
 
-def make_pool(factory: Factory, clock: Clock | None = None, **kwargs: int) -> PostalCodeSessions:
+def make_pool(
+    factory: Factory,
+    clock: Clock | None = None,
+    *,
+    session_limiter: RateLimiter | None = None,
+    **kwargs: int,
+) -> PostalCodeSessions:
     return PostalCodeSessions(
         new_session=factory,
         max_age_seconds=kwargs.get("max_age_seconds", 3000),
         max_sessions=kwargs.get("max_sessions", 100),
         now=clock or Clock(),
+        session_limiter=session_limiter,
+    )
+
+
+def one_new_session(redis: FakeAsyncRedis) -> RateLimiter:
+    return RateLimiter(
+        redis, key="ratelimit:dia:new_sessions", name="new_sessions", limit=1, window_seconds=600
     )
 
 
@@ -349,3 +369,57 @@ async def test_a_creation_that_ends_after_aclose_is_closed_not_kept() -> None:
         await pending
     assert factory.created[0].closed
     assert pool.active_count == 0
+
+
+# --- Limit of new sessions (spec 003 RF-7, RF-8, T10) ---
+
+
+async def test_past_the_limit_a_new_postal_code_is_refused_without_a_put(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    factory = Factory()
+    pool = make_pool(factory, session_limiter=one_new_session(FakeAsyncRedis()))
+    await pool.get("08001")
+
+    with (
+        caplog.at_level(logging.WARNING, logger="app.services.postal_code_sessions"),
+        pytest.raises(OutboundRateLimitedError),
+    ):
+        await pool.get("41001")
+
+    assert len(factory.created) == 1  # no session, so no PUT, for 41001
+    assert "limit=new_sessions" in caplog.text
+    await pool.aclose()
+
+
+async def test_a_postal_code_with_a_live_session_is_not_limited() -> None:
+    factory = Factory()
+    pool = make_pool(factory, session_limiter=one_new_session(FakeAsyncRedis()))
+    first = await pool.get("08001")
+
+    assert await pool.get("08001") is first
+    await pool.aclose()
+
+
+async def test_dias_default_postal_code_does_not_count() -> None:
+    factory = Factory()
+    pool = make_pool(factory, session_limiter=one_new_session(FakeAsyncRedis()))
+
+    await pool.get(DEFAULT_POSTAL_CODE)
+    await pool.get("08001")  # the only new session of the window
+
+    assert len(factory.created) == 2
+    await pool.aclose()
+
+
+async def test_renewing_an_old_session_counts_as_a_new_one() -> None:
+    factory, clock = Factory(), Clock()
+    pool = make_pool(
+        factory, clock, session_limiter=one_new_session(FakeAsyncRedis()), max_age_seconds=3000
+    )
+    await pool.get("08001")
+
+    clock.now += 3000
+    with pytest.raises(OutboundRateLimitedError):
+        await pool.get("08001")
+    await pool.aclose()
