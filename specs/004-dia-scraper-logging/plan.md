@@ -1,6 +1,6 @@
 # Plan 004 — Logging
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Fecha:** 2026-10-07
 - **Spec:** [spec.md](spec.md) (aprobada). Sus decisiones se citan como **spec-D1…spec-D6**; las de este plan, **D1…**.
 - **Base:** la implementación ya probada de Alcampo (`app/core/logging.py`, `app/middleware/request_context.py`), adaptada.

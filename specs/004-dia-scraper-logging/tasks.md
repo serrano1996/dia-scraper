@@ -1,6 +1,6 @@
 # Tasks 004 — Logging
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-07)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 4 PRs encadenados (stacked). Cada PR deja la suite en verde.
 
@@ -17,7 +17,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 
 ## PR1 — Configuración y middleware
 
-### [ ] T1 — Validar `LOG_LEVEL`
+### [x] T1 — Validar `LOG_LEVEL`
 - **RED:** `test_config.py`: `debug`, `Info`, `WARNING` válidos y normalizados a mayúsculas; `VERBOSE` y `""` → `ValidationError`.
 - **GREEN:** validador en `Settings`.
 - **RF:** RF-2

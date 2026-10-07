@@ -174,3 +174,27 @@ def test_the_environment_overrides_the_anti_ban_settings(monkeypatch: pytest.Mon
     assert (settings.akamai_cooldown_seconds, settings.dia_rate_limit) == (120, 5)
     assert (settings.dia_rate_window_seconds, settings.new_session_limit) == (10, 2)
     assert (settings.new_session_window_seconds, settings.retry_jitter_max_s) == (30, 0.1)
+
+
+# --- LOG_LEVEL (spec 004 RF-2, T1) ---
+
+
+@pytest.mark.parametrize(
+    ("value", "level"), [("debug", "DEBUG"), (" Info ", "INFO"), ("WARNING", "WARNING")]
+)
+def test_log_level_accepts_any_case(
+    monkeypatch: pytest.MonkeyPatch, value: str, level: str
+) -> None:
+    set_required(monkeypatch)
+    monkeypatch.setenv("LOG_LEVEL", value)
+
+    assert Settings(_env_file=None).log_level == level
+
+
+@pytest.mark.parametrize("value", ["VERBOSE", "", "10"])
+def test_an_unknown_log_level_fails_at_startup(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    set_required(monkeypatch)
+    monkeypatch.setenv("LOG_LEVEL", value)
+
+    with pytest.raises(ValidationError, match="LOG_LEVEL"):
+        Settings(_env_file=None)
