@@ -157,7 +157,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 
 ## PR3 — Cache y servicio
 
-### [ ] T13 — Repositorio de cache
+### [x] T13 — Repositorio de cache
 - **RED:** `tests/services/test_search_cache.py`, con `FakeAsyncRedis` nuevo por test:
   - `get` sin entrada → `None`;
   - `set` + `get` → la misma `ProductSearchResponse`; la clave es `search:28041:leche:1:50`;
