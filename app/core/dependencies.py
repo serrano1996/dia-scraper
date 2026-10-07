@@ -9,6 +9,7 @@ from fastapi import Request
 
 from app.core.state import resources
 from app.scrapers.dia_search import DiaSearchScraper
+from app.services.postal_code_cache import NotServedRepository
 from app.services.product_service import ProductService
 from app.services.search_cache import SearchCacheRepository
 
@@ -19,6 +20,7 @@ def get_product_service(request: Request) -> ProductService:
     return ProductService(
         scraper=DiaSearchScraper(settings=res.settings),
         cache=SearchCacheRepository(res.redis),
+        not_served=NotServedRepository(res.redis),
         sessions=res.sessions,
         settings=res.settings,
     )

@@ -99,7 +99,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T8
 - **RF:** RF-8, RF-9, RF-10 (spec-D7)
 
-### [ ] T10 — CP sin servicio
+### [x] T10 — CP sin servicio
 - **RED:**
   - `sessions.get` lanza `PostalCodeNotServedError` → se propaga y queda marcado en la cache negativa con su TTL;
   - CP marcado → `PostalCodeNotServedError` sin llamar al pool;

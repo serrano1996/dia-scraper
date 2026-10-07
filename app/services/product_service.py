@@ -9,11 +9,12 @@ from typing import Protocol
 import httpx
 
 from app.core.config import Settings
-from app.exceptions import PageOutOfRangeError, UpstreamUnavailableError
+from app.exceptions import PageOutOfRangeError, PostalCodeNotServedError, UpstreamUnavailableError
 from app.mappers.product_mapper import map_search
 from app.models.dia import DiaSearchResponse
 from app.models.product import MAX_PAGE, ProductQuery, ProductSearchResponse, SearchMetadata
 from app.services.pagination import dia_window
+from app.services.postal_code_cache import NotServedRepository
 from app.services.postal_code_sessions import PostalCodeSession
 from app.services.search_cache import SearchCacheRepository
 
@@ -52,15 +53,18 @@ class ProductService:
         *,
         scraper: SearchScraper,
         cache: SearchCacheRepository,
+        not_served: NotServedRepository,
         sessions: SessionPool,
         settings: Settings,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self._scraper = scraper
         self._cache = cache
+        self._not_served = not_served
         self._sessions = sessions
         self._base_url = settings.dia_base_url
         self._ttl_seconds = settings.cache_ttl_seconds
+        self._not_served_ttl_seconds = settings.postal_code_negative_cache_ttl_seconds
         self._clock = clock
 
     async def search(self, query: ProductQuery) -> ProductSearchResponse:
@@ -129,7 +133,7 @@ class ProductService:
         """
         answered = ""
         for _ in range(SESSION_TRIES):
-            session = await self._sessions.get(query.postal_code)
+            session = await self._session_for(query.postal_code)
             raw = await self._scraper.search(
                 query.term, page=page, page_size=page_size, client=session.client
             )
@@ -139,3 +143,16 @@ class ProductService:
             self._sessions.discard(query.postal_code, session)
         logger.warning("postal code mismatch expected=%s got=%s", query.postal_code, answered)
         raise UpstreamUnavailableError("Dia answered for another postal code")
+
+    async def _session_for(self, postal_code: str) -> PostalCodeSession:
+        """The pool's session, unless Dia is known not to serve `postal_code` (RF-4, RF-5).
+
+        Only Dia's "no service" answer is remembered; an upstream failure is not (RF-6).
+        """
+        if await self._not_served.is_marked(postal_code):
+            raise PostalCodeNotServedError(postal_code)
+        try:
+            return await self._sessions.get(postal_code)
+        except PostalCodeNotServedError:
+            await self._not_served.mark(postal_code, ttl_seconds=self._not_served_ttl_seconds)
+            raise

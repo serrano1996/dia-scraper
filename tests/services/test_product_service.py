@@ -6,9 +6,15 @@ import pytest
 from fakeredis import FakeAsyncRedis
 
 from app.core.config import Settings
-from app.exceptions import PageOutOfRangeError, UpstreamBlockedError, UpstreamUnavailableError
+from app.exceptions import (
+    PageOutOfRangeError,
+    PostalCodeNotServedError,
+    UpstreamBlockedError,
+    UpstreamUnavailableError,
+)
 from app.models.dia import DiaSearchResponse
 from app.models.product import ProductQuery
+from app.services.postal_code_cache import NotServedRepository
 from app.services.product_service import ProductService
 from app.services.search_cache import SearchCacheRepository
 from tests.fixture_data import load_fixture
@@ -55,9 +61,12 @@ class FakeSessions:
         self.handed_out: dict[str, FakeSession] = {}
         self.requested: list[str] = []
         self.discarded: list[tuple[str, FakeSession]] = []
+        self.errors: dict[str, Exception] = {}
 
     async def get(self, postal_code: str) -> FakeSession:
         self.requested.append(postal_code)
+        if postal_code in self.errors:
+            raise self.errors[postal_code]
         return self.handed_out.setdefault(postal_code, FakeSession(postal_code))
 
     def discard(self, postal_code: str, session: FakeSession) -> None:
@@ -89,10 +98,12 @@ def make_service(
         dia_base_url="https://www.dia.es",
         redis_url="redis://localhost:6379/0",
         cache_ttl_seconds=600,
+        postal_code_negative_cache_ttl_seconds=900,
     )
     return ProductService(
         scraper=scraper,
         cache=SearchCacheRepository(redis),
+        not_served=NotServedRepository(redis),
         sessions=sessions,
         settings=settings,
         clock=lambda: now,
@@ -386,3 +397,41 @@ async def test_warehouse_is_always_the_requested_postal_code(redis, sessions) ->
 
     assert response.search.warehouse == response.search.postal_code == "41001"
     assert sessions.discarded == []
+
+
+# --- Postal codes Dia does not serve (spec 002 RF-4..RF-6, T10) ---
+
+
+async def test_a_postal_code_dia_does_not_serve_is_remembered(redis, sessions) -> None:
+    sessions.errors["35001"] = PostalCodeNotServedError("35001")
+    scraper = FakeScraper(fixture_body())
+
+    with pytest.raises(PostalCodeNotServedError):
+        await make_service(scraper, redis, sessions).search(query(postal_code="35001"))
+
+    assert scraper.calls == []
+    assert await NotServedRepository(redis).is_marked("35001")
+    assert 0 < await redis.ttl("postal_code:not_served:35001") <= 900
+
+
+async def test_a_remembered_postal_code_is_answered_without_asking_dia(redis, sessions) -> None:
+    await NotServedRepository(redis).mark("35001", ttl_seconds=900)
+
+    with pytest.raises(PostalCodeNotServedError) as exc_info:
+        await make_service(FakeScraper(fixture_body()), redis, sessions).search(
+            query(postal_code="35001")
+        )
+
+    assert exc_info.value.postal_code == "35001"
+    assert sessions.requested == []
+
+
+async def test_a_failed_put_does_not_mark_the_postal_code(redis, sessions) -> None:
+    sessions.errors["08001"] = UpstreamUnavailableError("down")
+
+    with pytest.raises(UpstreamUnavailableError):
+        await make_service(FakeScraper(fixture_body()), redis, sessions).search(
+            query(postal_code="08001")
+        )
+
+    assert await redis.keys("*") == []
