@@ -9,7 +9,8 @@ from tests.fixture_data import load_fixture
 from tests.integration.conftest import Harness, mock_dia_search
 
 URL = "/api/v1/products"
-PARAMS = {"postal_code": "28001", "term": "leche"}
+# Dia's default postal code: no PUT needed (spec 002 RF-3); the real fixtures carry it.
+PARAMS = {"postal_code": "28041", "term": "leche"}
 
 
 def test_miss_answers_200_from_a_single_call_to_dia(

@@ -7,11 +7,11 @@ the only place that reads `app.state`, so any other typo is a `mypy` error.
 
 from dataclasses import dataclass
 
-import httpx
 from redis.asyncio import Redis
 from starlette.applications import Starlette
 
 from app.core.config import Settings
+from app.services.postal_code_sessions import PostalCodeSessions
 
 
 @dataclass(frozen=True)
@@ -20,7 +20,8 @@ class AppResources:
 
     settings: Settings
     redis: Redis
-    http_client: httpx.AsyncClient
+    # One Dia session per postal code, each with its own HTTP client (spec 002).
+    sessions: PostalCodeSessions
 
 
 def resources(app: Starlette) -> AppResources:

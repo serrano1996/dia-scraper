@@ -12,8 +12,8 @@ from app.exceptions import PageOutOfRangeError
 from app.mappers.product_mapper import map_search
 from app.models.dia import DiaSearchResponse
 from app.models.product import MAX_PAGE, ProductQuery, ProductSearchResponse, SearchMetadata
-from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.services.pagination import dia_window
+from app.services.postal_code_sessions import PostalCodeSession
 from app.services.search_cache import SearchCacheRepository
 
 STRATEGY = "api"
@@ -25,6 +25,13 @@ class SearchScraper(Protocol):
     async def search(
         self, term: str, *, page: int, page_size: int, client: httpx.AsyncClient
     ) -> DiaSearchResponse: ...
+
+
+class SessionPool(Protocol):
+    """What the service needs from `PostalCodeSessions`."""
+
+    async def get(self, postal_code: str) -> PostalCodeSession: ...
+    def discard(self, postal_code: str, session: PostalCodeSession) -> None: ...
 
 
 def _utc_now() -> datetime:
@@ -39,13 +46,13 @@ class ProductService:
         *,
         scraper: SearchScraper,
         cache: SearchCacheRepository,
-        http_client: httpx.AsyncClient,
+        sessions: SessionPool,
         settings: Settings,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self._scraper = scraper
         self._cache = cache
-        self._http_client = http_client
+        self._sessions = sessions
         self._base_url = settings.dia_base_url
         self._ttl_seconds = settings.cache_ttl_seconds
         self._clock = clock
@@ -57,25 +64,25 @@ class ProductService:
         through; neither is cached (RF-15).
         """
         cached = await self._cache.get(
-            # Every search uses Dia's default postal code in spec 001 (spec-D2, plan-D4).
-            postal_code=DEFAULT_POSTAL_CODE,
+            # One entry per requested postal code (spec 002 RF-11, spec-D8).
+            postal_code=query.postal_code,
             term=query.term,
             page=query.page,
             page_size=query.page_size,
         )
         if cached is not None:
-            # The entry is shared by every postal code and casing of the term:
-            # answer with the current request's, keep the original scraped_at (RF-16).
-            search = cached.search.model_copy(
-                update={"postal_code": query.postal_code, "term": query.term}
-            )
+            # The entry is shared by every casing of the term: answer with the
+            # current request's, keep the original scraped_at (spec 001 RF-16).
+            search = cached.search.model_copy(update={"term": query.term})
             return cached.model_copy(update={"search": search})
 
         # Dia never serves fewer than 30 products: ask for the Dia page that
         # holds the requested one and keep only that slice (spec-D9, plan-D17).
         window = dia_window(query.page, query.page_size)
+        # Dia takes the postal code from the session (spec 002 RF-1, RF-2).
+        session = await self._sessions.get(query.postal_code)
         raw = await self._scraper.search(
-            query.term, page=window.page, page_size=window.page_size, client=self._http_client
+            query.term, page=window.page, page_size=window.page_size, client=session.client
         )
         items = raw.search_items[window.offset : window.offset + query.page_size]
         # Raw items, not mapped products: a page whose products are all broken
@@ -99,7 +106,7 @@ class ProductService:
             products=map_search(page_raw, base_url=self._base_url),
         )
         await self._cache.set(
-            postal_code=DEFAULT_POSTAL_CODE,
+            postal_code=query.postal_code,
             term=query.term,
             page=query.page,
             page_size=query.page_size,

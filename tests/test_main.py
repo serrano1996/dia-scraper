@@ -7,6 +7,7 @@ import app.main as main
 from app.core.config import get_settings
 from app.core.state import AppResources, resources
 from app.main import create_app
+from app.services.postal_code_sessions import PostalCodeSessions
 
 
 @pytest.fixture(autouse=True)
@@ -37,15 +38,16 @@ def test_lifespan_builds_and_closes_the_shared_clients(monkeypatch: pytest.Monke
     monkeypatch.setattr(main, "create_redis", lambda settings: redis)
     app = create_app()
 
-    with TestClient(app):
+    with TestClient(app) as client:
         res = resources(app)
         assert isinstance(res, AppResources)
         assert res.redis is redis
-        assert isinstance(res.http_client, httpx.AsyncClient)
-        assert res.http_client.base_url == httpx.URL("https://dia.test")
-        http_client = res.http_client
+        assert isinstance(res.sessions, PostalCodeSessions)
+        # Dia's default postal code needs no request to build its session.
+        session = client.portal.call(res.sessions.get, "28041")
+        assert session.client.base_url == httpx.URL("https://dia.test")
 
-    assert http_client.is_closed
+    assert session.client.is_closed
     assert redis.closed
 
 
@@ -54,18 +56,18 @@ def test_resources_outside_the_lifespan_fail_clearly() -> None:
         resources(create_app())
 
 
-def test_redis_is_closed_when_the_http_client_cannot_be_built(
+def test_redis_is_closed_when_the_session_pool_cannot_be_built(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     redis = SpyRedis()
     monkeypatch.setattr(main, "create_redis", lambda settings: redis)
 
-    def broken_http_client(settings):
-        raise RuntimeError("cannot build the HTTP client")
+    def broken_pool(**kwargs):
+        raise RuntimeError("cannot build the session pool")
 
-    monkeypatch.setattr(main, "create_http_client", broken_http_client)
+    monkeypatch.setattr(main, "PostalCodeSessions", broken_pool)
 
-    with pytest.raises(RuntimeError, match="HTTP client"), TestClient(create_app()):
+    with pytest.raises(RuntimeError, match="session pool"), TestClient(create_app()):
         pass
 
     assert redis.closed

@@ -19,6 +19,6 @@ def get_product_service(request: Request) -> ProductService:
     return ProductService(
         scraper=DiaSearchScraper(settings=res.settings),
         cache=SearchCacheRepository(res.redis),
-        http_client=res.http_client,
+        sessions=res.sessions,
         settings=res.settings,
     )

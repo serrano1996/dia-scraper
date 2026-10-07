@@ -11,7 +11,9 @@ from app.api.v1.products import router as products_router
 from app.core.config import Settings, get_settings
 from app.core.state import AppResources
 from app.exceptions import PageOutOfRangeError, UpstreamUnavailableError
+from app.scrapers.dia_session import DiaSession
 from app.scrapers.http_client import create_http_client
+from app.services.postal_code_sessions import PostalCodeSessions
 
 
 def create_redis(settings: Settings) -> redis.Redis:
@@ -27,11 +29,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Each client is closed even if building the next one fails.
         redis_client = create_redis(settings)
         stack.push_async_callback(redis_client.aclose)
-        http_client = create_http_client(settings)
-        stack.push_async_callback(http_client.aclose)
-        app.state.resources = AppResources(
-            settings=settings, redis=redis_client, http_client=http_client
+        # Each session builds its own HTTP client, with its own cookie jar (plan-D1, D11).
+        sessions = PostalCodeSessions(
+            new_session=lambda: DiaSession(client=create_http_client(settings), settings=settings),
+            max_age_seconds=settings.session_max_age_seconds,
+            max_sessions=settings.max_sessions,
         )
+        stack.push_async_callback(sessions.aclose)
+        app.state.resources = AppResources(settings=settings, redis=redis_client, sessions=sessions)
         yield
 
 

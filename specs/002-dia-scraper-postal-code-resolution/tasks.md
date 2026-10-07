@@ -79,13 +79,14 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 
 ## PR3 — Servicio
 
-### [ ] T8 — El servicio usa la sesión del CP
+### [x] T8 — El servicio usa la sesión del CP
 - **RED:** `tests/services/test_product_service.py`, con un pool falso:
   - la búsqueda usa `session.client` de `sessions.get("08001")`;
   - la clave de cache es `search:08001:leche:1:50`; `28041` y `08001` no comparten entrada;
   - un hit no llama al pool;
   - los tests de la 001 se adaptan: el servicio ya no recibe `http_client`.
 - **GREEN:** `ProductService(sessions=…)` (plan-D9, plan-D11).
+- **Cambio al implementar (2026-10-07):** cambiar la firma del servicio rompía `dependencies.py` con `mypy --strict`, así que T8 adelanta el cableado mínimo de T11 (`AppResources.sessions`, el pool en el `lifespan`, el provider) para no dejar la suite en rojo. Los tests de integración de la 001 pasan a `postal_code=28041` (sin `PUT`), y el de arranque fallido pasa a romper la construcción del pool. T11 se queda con el handler `404`.
 - **Depende:** T5
 - **RF:** RF-10, RF-11, RF-12
 
@@ -113,7 +114,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 
 ### [ ] T11 — Estado, `lifespan` y handler `404`
 - **RED:**
-  - `tests/test_main.py`: el `lifespan` crea el pool y lo cierra al apagar (activas y retiradas); `AppResources` ya no tiene `http_client`;
+  - (adelantado a T8: el `lifespan` crea el pool y lo cierra al apagar; `AppResources` ya no tiene `http_client`)
   - `tests/api/test_products_route.py`: `PostalCodeNotServedError` → `404 {"detail": "Postal code not served by Dia"}`.
 - **GREEN:** `app/core/state.py`, `dependencies.py`, `main.py` (plan-D11).
 - **Depende:** T10
