@@ -6,6 +6,7 @@ import pytest
 
 from app.exceptions import CooldownActiveError, UpstreamBlockedError, UpstreamUnavailableError
 from app.scrapers.retry import parse_retry_after, send_with_retry
+from tests.scrapers.gate_doubles import FakeGate
 
 REQUEST = httpx.Request("GET", "https://dia.test/api/v1/search-back/search/reduced")
 
@@ -308,23 +309,6 @@ async def test_retry_after_is_ignored_on_other_statuses() -> None:
 
 
 # --- The outbound gate (spec 003 plan-D1, T8) ---
-
-
-class FakeGate:
-    """Counts admissions and blocks; can refuse admission."""
-
-    def __init__(self, refuse: Exception | None = None) -> None:
-        self.admitted = 0
-        self.blocks = 0
-        self.refuse = refuse
-
-    async def admit(self) -> None:
-        if self.refuse is not None:
-            raise self.refuse
-        self.admitted += 1
-
-    async def blocked(self) -> None:
-        self.blocks += 1
 
 
 async def test_the_gate_admits_every_attempt() -> None:

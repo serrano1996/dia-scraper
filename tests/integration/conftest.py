@@ -39,6 +39,7 @@ def harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[Harness]:
     monkeypatch.setenv("DIA_BASE_URL", DIA_BASE_URL)
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setenv("RETRY_BASE_DELAY", "0")
+    monkeypatch.setenv("RETRY_JITTER_MAX_S", "0")
     get_settings.cache_clear()
     redis = FakeAsyncRedis()
     monkeypatch.setattr(main_module, "create_redis", lambda _settings: redis)

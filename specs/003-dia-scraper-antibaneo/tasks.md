@@ -65,7 +65,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **GREEN:** parámetro `gate` (plan-D1).
 - **RF:** RF-1, RF-4
 
-### [ ] T9 — Scraper y sesión pasan la puerta
+### [x] T9 — Scraper y sesión pasan la puerta
 - **RED:** `test_dia_search.py` y `test_dia_session.py`: con una puerta cuyo `admit` lanza `CooldownActiveError`, ni la búsqueda ni el `PUT` llegan a respx; un `403` de Akamai en cualquiera de los dos llama a `blocked`.
 - **GREEN:** `DiaSearchScraper(gate=…, jitter_max=…)`, `DiaSession(gate=…)`.
 - **RF:** RF-1, RF-2, RF-4

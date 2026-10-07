@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.exceptions import UpstreamUnavailableError
 from app.models.dia import DiaSearchResponse
-from app.scrapers.retry import Sleep, send_with_retry
+from app.scrapers.retry import Gate, Sleep, send_with_retry
 
 # The lighter variant of the search Dia's own web client uses when paging: the
 # same data without header, footer and customer (Fase 0 §1).
@@ -22,10 +22,15 @@ DEFAULT_POSTAL_CODE = "28041"
 class DiaSearchScraper:
     """Searches Dia's catalogue: one request per page, plus retries (spec 001 RF-3)."""
 
-    def __init__(self, *, settings: Settings, sleep: Sleep = asyncio.sleep) -> None:
+    def __init__(
+        self, *, settings: Settings, sleep: Sleep = asyncio.sleep, gate: Gate | None = None
+    ) -> None:
         self._max_attempts = settings.retry_max_attempts
         self._base_delay = settings.retry_base_delay
         self._sleep = sleep
+        self._jitter_max = settings.retry_jitter_max_s
+        # Every request goes through the outbound gate (spec 003 plan-D1).
+        self._gate = gate
 
     async def search(
         self, term: str, *, page: int, page_size: int, client: httpx.AsyncClient
@@ -41,6 +46,8 @@ class DiaSearchScraper:
             max_attempts=self._max_attempts,
             base_delay=self._base_delay,
             sleep=self._sleep,
+            jitter_max=self._jitter_max,
+            gate=self._gate,
         )
         try:
             return DiaSearchResponse.model_validate_json(response.content)

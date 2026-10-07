@@ -3,11 +3,17 @@ import pytest
 import respx
 
 from app.core.config import Settings
-from app.exceptions import PostalCodeNotServedError, UpstreamBlockedError, UpstreamUnavailableError
+from app.exceptions import (
+    CooldownActiveError,
+    PostalCodeNotServedError,
+    UpstreamBlockedError,
+    UpstreamUnavailableError,
+)
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.scrapers.dia_session import SAVE_SHIPPING_ADDRESS_PATH, DiaSession
 from app.scrapers.http_client import create_http_client
 from tests.fixture_data import load_fixture
+from tests.scrapers.gate_doubles import FakeGate
 
 BASE_URL = "https://dia.test"
 PUT_URL = f"{BASE_URL}/api/v1/common-aggregator/save-shipping-address"
@@ -16,11 +22,15 @@ SEARCH_URL = f"{BASE_URL}/api/v1/search-back/search/reduced"
 SESSION_ID = "00000000-0000-4000-8000-000000000000"
 
 
-def make_session() -> DiaSession:
+def make_session(gate: FakeGate | None = None) -> DiaSession:
     settings = Settings(
-        _env_file=None, dia_base_url=BASE_URL, redis_url="redis://x", retry_base_delay=0
+        _env_file=None,
+        dia_base_url=BASE_URL,
+        redis_url="redis://x",
+        retry_base_delay=0,
+        retry_jitter_max_s=0,
     )
-    return DiaSession(client=create_http_client(settings), settings=settings)
+    return DiaSession(client=create_http_client(settings), settings=settings, gate=gate)
 
 
 async def set_postal_code(postal_code: str = "08001") -> DiaSession:
@@ -161,3 +171,39 @@ async def test_aclose_closes_its_client() -> None:
     await session.aclose()
 
     assert session.client.is_closed
+
+
+# --- The outbound gate (spec 003, T9) ---
+
+
+@respx.mock
+async def test_a_put_refused_by_the_gate_never_reaches_dia() -> None:
+    route = respx.put(PUT_URL).mock(return_value=httpx.Response(204))
+    session = make_session(FakeGate(refuse=CooldownActiveError("cooldown")))
+    try:
+        with pytest.raises(CooldownActiveError):
+            await session.set_postal_code("08001")
+    finally:
+        await session.aclose()
+
+    assert route.call_count == 0
+
+
+@respx.mock
+async def test_an_akamai_block_on_a_put_is_reported_to_the_gate() -> None:
+    respx.put(PUT_URL).mock(
+        return_value=httpx.Response(
+            403,
+            text="<HTML><TITLE>Access Denied</TITLE></HTML>",
+            headers={"Content-Type": "text/html"},
+        )
+    )
+    gate = FakeGate()
+    session = make_session(gate)
+    try:
+        with pytest.raises(UpstreamBlockedError):
+            await session.set_postal_code("08001")
+    finally:
+        await session.aclose()
+
+    assert (gate.admitted, gate.blocks) == (1, 1)

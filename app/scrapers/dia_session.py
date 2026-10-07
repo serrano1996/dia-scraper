@@ -15,7 +15,7 @@ from app.core.config import Settings
 from app.exceptions import PostalCodeNotServedError, UpstreamUnavailableError
 from app.models.dia import DiaValidationError
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
-from app.scrapers.retry import Sleep, send_with_retry
+from app.scrapers.retry import Gate, Sleep, send_with_retry
 
 SAVE_SHIPPING_ADDRESS_PATH = "/api/v1/common-aggregator/save-shipping-address"
 
@@ -24,12 +24,20 @@ class DiaSession:
     """A Dia session. It starts with Dia's default postal code (Fase 0 §2)."""
 
     def __init__(
-        self, *, client: httpx.AsyncClient, settings: Settings, sleep: Sleep = asyncio.sleep
+        self,
+        *,
+        client: httpx.AsyncClient,
+        settings: Settings,
+        sleep: Sleep = asyncio.sleep,
+        gate: Gate | None = None,
     ) -> None:
         self._client = client
         self._max_attempts = settings.retry_max_attempts
         self._base_delay = settings.retry_base_delay
         self._sleep = sleep
+        self._jitter_max = settings.retry_jitter_max_s
+        # Every request goes through the outbound gate (spec 003 plan-D1).
+        self._gate = gate
         self._postal_code = DEFAULT_POSTAL_CODE
 
     @property
@@ -57,6 +65,8 @@ class DiaSession:
             max_attempts=self._max_attempts,
             base_delay=self._base_delay,
             sleep=self._sleep,
+            jitter_max=self._jitter_max,
+            gate=self._gate,
         )
         if response.status_code == 204:
             self._postal_code = postal_code

@@ -3,24 +3,28 @@ import pytest
 import respx
 
 from app.core.config import Settings
-from app.exceptions import UpstreamBlockedError, UpstreamUnavailableError
+from app.exceptions import CooldownActiveError, UpstreamBlockedError, UpstreamUnavailableError
 from app.models.dia import DiaSearchResponse
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE, SEARCH_PATH, DiaSearchScraper
 from tests.fixture_data import load_fixture
+from tests.scrapers.gate_doubles import FakeGate
 
 BASE_URL = "https://dia.test"
 SEARCH_URL = f"{BASE_URL}/api/v1/search-back/search/reduced"
 
 
-def make_scraper(*, max_attempts: int = 3) -> tuple[DiaSearchScraper, httpx.AsyncClient]:
+def make_scraper(
+    *, max_attempts: int = 3, gate: FakeGate | None = None
+) -> tuple[DiaSearchScraper, httpx.AsyncClient]:
     settings = Settings(
         _env_file=None,
         dia_base_url=BASE_URL,
         redis_url="redis://localhost:6379/0",
         retry_max_attempts=max_attempts,
         retry_base_delay=0,
+        retry_jitter_max_s=0,
     )
-    return DiaSearchScraper(settings=settings), httpx.AsyncClient(base_url=BASE_URL)
+    return DiaSearchScraper(settings=settings, gate=gate), httpx.AsyncClient(base_url=BASE_URL)
 
 
 async def search(term: str = "leche", *, page: int = 1, page_size: int = 50) -> DiaSearchResponse:
@@ -122,3 +126,43 @@ async def test_exhausted_transport_errors_never_leak_httpx_types() -> None:
         await search()
 
     assert not isinstance(exc_info.value, httpx.HTTPError)
+
+
+# --- The outbound gate (spec 003, T9) ---
+
+
+@respx.mock
+async def test_a_search_refused_by_the_gate_never_reaches_dia() -> None:
+    route = respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(200, json=load_fixture("dia_search_leche.json"))
+    )
+    scraper, client = make_scraper(gate=FakeGate(refuse=CooldownActiveError("cooldown")))
+
+    try:
+        with pytest.raises(CooldownActiveError):
+            await scraper.search("leche", page=1, page_size=50, client=client)
+    finally:
+        await client.aclose()
+
+    assert route.call_count == 0
+
+
+@respx.mock
+async def test_an_akamai_block_on_a_search_is_reported_to_the_gate() -> None:
+    respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(
+            403,
+            text="<HTML><TITLE>Access Denied</TITLE></HTML>",
+            headers={"Content-Type": "text/html"},
+        )
+    )
+    gate = FakeGate()
+    scraper, client = make_scraper(gate=gate)
+
+    try:
+        with pytest.raises(UpstreamBlockedError):
+            await scraper.search("leche", page=1, page_size=50, client=client)
+    finally:
+        await client.aclose()
+
+    assert (gate.admitted, gate.blocks) == (1, 1)
