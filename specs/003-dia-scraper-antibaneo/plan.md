@@ -69,7 +69,7 @@ La cache de búsquedas y la negativa se leen **antes** de llegar a la puerta, as
 
 **D4 — Las excepciones nuevas heredan de `UpstreamUnavailableError`**: el handler de `502` ya las cubre (RNF-4). No se reintentan: `send_with_retry` solo reintenta respuestas y errores de red.
 
-**D5 — El límite de sesiones nuevas vive en el pool** (`PostalCodeSessions(session_limiter=…)`), y se consume en `_create` justo antes del `PUT`, solo para CPs distintos de `28041`. Las renovaciones pasan por `_create`, así que cuentan (RF-8). Durante un enfriamiento el `PUT` lo frena la puerta; el hueco ya consumido del límite de sesiones se acepta (es un hueco de un límite generoso, y un enfriamiento es raro).
+**D5 — El límite de sesiones nuevas vive en el pool** (`PostalCodeSessions(session_limiter=…)`), y se consume en `_create` justo antes del `PUT`, solo para CPs distintos de `28041`. Las renovaciones pasan por `_create`, así que cuentan (RF-8). Durante un enfriamiento el `PUT` lo frena la puerta. *Cambio tras la revisión (T14):* el plan aceptaba que ese hueco se perdiera, pero con 5 min de enfriamiento y 10 min de ventana unas pocas búsquedas de CPs nuevos durante el enfriamiento agotaban el cupo para después. Ahora, si la puerta frena el `PUT` (enfriamiento o límite global), el hueco se devuelve; si el `PUT` sale (aunque falle o el CP no tenga servicio), cuenta.
 
 **D6 — Jitter y `Retry-After` en `send_with_retry`**, con `uniform` y `now` inyectables (tests deterministas). `Retry-After` solo con `429`; segundos o fecha HTTP; fecha pasada = 0. Si la espera supera 60 s, `UpstreamUnavailableError` sin reintentar (spec RF-10, más estricta que Alcampo, que espera el tope).
 

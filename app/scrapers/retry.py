@@ -50,7 +50,7 @@ def parse_retry_after(value: str | None, *, now: datetime) -> float | None:
         return float(value)
     try:
         retry_at = parsedate_to_datetime(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):  # a year too big overflows
         return None
     if retry_at.tzinfo is None:
         retry_at = retry_at.replace(tzinfo=UTC)

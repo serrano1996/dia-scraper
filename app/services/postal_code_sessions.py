@@ -14,7 +14,7 @@ from typing import Protocol
 
 import httpx
 
-from app.exceptions import OutboundRateLimitedError, UpstreamUnavailableError
+from app.exceptions import CooldownActiveError, OutboundRateLimitedError, UpstreamUnavailableError
 from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.services.in_flight import InFlight
 from app.services.rate_limiter import RateLimiter
@@ -128,14 +128,21 @@ class PostalCodeSessions:
             await _close(session)
 
     async def _create(self, postal_code: str) -> PostalCodeSession:
+        slot = ""
         if postal_code != DEFAULT_POSTAL_CODE:
             # Before building anything: a refused postal code costs no client and no PUT.
-            await self._admit_new_session()
+            slot = await self._admit_new_session()
         session = self._new_session()
         try:
             # The anonymous session is born in Dia's default postal code (spec-D6).
             if postal_code != DEFAULT_POSTAL_CODE:
                 await session.set_postal_code(postal_code)
+        except (CooldownActiveError, OutboundRateLimitedError):
+            # The gate stopped the PUT before it left: give the slot back, or a
+            # cooldown would use up the quota of new postal codes (review T14).
+            await self._release_new_session(slot)
+            await _close(session)
+            raise
         except BaseException:
             await _close(session)
             raise
@@ -147,11 +154,15 @@ class PostalCodeSessions:
             self._retire(next(iter(self._entries)))
         return session
 
-    async def _admit_new_session(self) -> None:
+    async def _release_new_session(self, slot: str) -> None:
+        if self._session_limiter is not None:
+            await self._session_limiter.release(slot)
+
+    async def _admit_new_session(self) -> str:
         if self._session_limiter is None:
-            return
+            return ""
         try:
-            await self._session_limiter.acquire()
+            return await self._session_limiter.acquire()
         except OutboundRateLimitedError:
             logger.warning(
                 "outbound limit reached limit=%s max=%d",

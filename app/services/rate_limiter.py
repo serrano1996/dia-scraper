@@ -48,13 +48,22 @@ class RateLimiter:
     def limit(self) -> int:
         return self._limit
 
-    async def acquire(self) -> None:
+    async def acquire(self) -> str:
         """Take one slot for a request about to be sent, or raise if none is left.
 
-        `limit == 0` disables the limit and never touches Redis (RF-6).
+        Returns the slot, to give it back with `release` if the request never
+        leaves. `limit == 0` disables the limit, never touches Redis and
+        returns `""` (RF-6).
+
+        Accepted limits (spec 003 review): scores use each process's clock, so
+        instances with skewed clocks count slightly off (NTP keeps it to
+        milliseconds against windows of 60-600 s); and a refusal is undone with
+        a separate ZREM, so a concurrent acquirer can be refused transiently.
+        Doing it atomically with Redis' own clock needs a Lua script, which
+        fakeredis only runs with an extra dependency (RNF-1).
         """
         if self._limit == 0:
-            return
+            return ""
         now = self._now()
         member = uuid.uuid4().hex
         async with self._redis.pipeline(transaction=True) as pipe:
@@ -69,3 +78,9 @@ class RateLimiter:
             # would keep the limit exhausted forever.
             await self._redis.zrem(self._key, member)
             raise OutboundRateLimitedError(f"outbound limit reached: {self._name}")
+        return member
+
+    async def release(self, slot: str) -> None:
+        """Give back a slot taken by `acquire` (no-op for `""`)."""
+        if slot:
+            await self._redis.zrem(self._key, slot)

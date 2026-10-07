@@ -92,7 +92,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **Depende:** T11
 - **RF:** RF-1…RF-8
 
-### [ ] T13 — Docs vivas
+### [x] T13 — Docs vivas
 - **Hacer:** README (sección "Protección frente a Akamai": enfriamiento, límites, jitter y `Retry-After`; tabla de configuración); `.env.example` (pedírselo al usuario si el agente no puede escribirlo). **Sin prueba manual de bloqueo** (spec §9): solo una búsqueda real para comprobar que la puerta no estorba el camino normal.
 - **Depende:** T12
 - **RF:** RNF-3. **Fin de PR4.**
@@ -100,3 +100,16 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 #### Resultado de la comprobación manual (2026-10-07)
 
 Una búsqueda real contra `https://www.dia.es` con la app completa (`lifespan`, puerta, limitadores) y Redis sustituido por `FakeAsyncRedis`: `postal_code=28041&term=aceite&page_size=5` → `200` en 534 ms, `total_results: 367`, 5 productos. En Redis, 1 hueco ocupado en `ratelimit:dia` y la entrada de cache; sin enfriamiento. **Sin prueba de bloqueo real** (spec §9): provocar uno pondría en riesgo la IP.
+
+---
+
+## Revisión con contexto nuevo (2026-10-07)
+
+Revisión adversarial de `82c159a..HEAD` (app y tests) antes del PR: 0 CRITICAL, 4 WARNING, 6 SUGGESTION. Verificados en vivo los dos primeros WARNING (el `OverflowError` se reproduce; el cupo se pierde por diseño de plan-D5).
+
+### [x] T14 — Correcciones de la revisión
+- **RED:** `parse_retry_after` con un año gigante → `None` (antes, `OverflowError` y `500`); un `PUT` frenado por la puerta (enfriamiento o límite global) devuelve su hueco del límite de sesiones nuevas; un `PUT` que llegó a Dia (sin servicio o fallo) lo conserva.
+- **GREEN:** `parse_retry_after` captura `OverflowError`; `RateLimiter.acquire` devuelve el hueco y `release` lo devuelve; el pool libera el hueco si el `PUT` no llegó a salir.
+- **Aceptado y documentado en `RateLimiter.acquire`:** relojes desfasados entre instancias y el rechazo en dos pasos (`ZADD`/`ZCARD` y luego `ZREM`). Hacerlo atómico con el reloj de Redis exige un script Lua, que fakeredis solo ejecuta con la dependencia `lupa` (fuera de RNF-1).
+- **No aplicadas:** espera mínima con `Retry-After: 0` (la spec pide esperar lo que diga Dia); otros formatos del bloqueo de Akamai (no observados, Fase 0 §5); un fallo de Redis en `gate.blocked()` (Redis caído, fuera de alcance); sesión renovada que el límite rechaza (aceptable: la retirada sigue valiendo 120 s).
+- **RF:** RF-7, RF-10

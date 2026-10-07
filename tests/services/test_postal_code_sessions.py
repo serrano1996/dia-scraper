@@ -6,6 +6,7 @@ import pytest
 from fakeredis import FakeAsyncRedis
 
 from app.exceptions import (
+    CooldownActiveError,
     OutboundRateLimitedError,
     PostalCodeNotServedError,
     UpstreamUnavailableError,
@@ -422,4 +423,43 @@ async def test_renewing_an_old_session_counts_as_a_new_one() -> None:
     clock.now += 3000
     with pytest.raises(OutboundRateLimitedError):
         await pool.get("08001")
+    await pool.aclose()
+
+
+# --- Fixes from the fresh review (T14) ---
+
+
+@pytest.mark.parametrize(
+    "refusal",
+    [CooldownActiveError("cooldown"), OutboundRateLimitedError("outbound limit reached: dia")],
+    ids=["cooldown", "global-limit"],
+)
+async def test_a_put_the_gate_refuses_gives_its_new_session_slot_back(refusal: Exception) -> None:
+    # The PUT never left: it must not eat the quota of new postal codes (review W2).
+    redis = FakeAsyncRedis()
+    factory = Factory(error=refusal)
+    pool = make_pool(factory, session_limiter=one_new_session(redis))
+
+    with pytest.raises(type(refusal)):
+        await pool.get("08001")
+
+    assert await redis.zcard("ratelimit:dia:new_sessions") == 0
+    factory.session_kwargs = {}
+    assert (await pool.get("41001")).postal_code == "41001"
+    await pool.aclose()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [PostalCodeNotServedError("35001"), UpstreamUnavailableError("down")],
+    ids=["not-served", "upstream"],
+)
+async def test_a_put_that_reached_dia_keeps_its_slot(error: Exception) -> None:
+    redis = FakeAsyncRedis()
+    pool = make_pool(Factory(error=error), session_limiter=one_new_session(redis))
+
+    with pytest.raises(type(error)):
+        await pool.get("35001")
+
+    assert await redis.zcard("ratelimit:dia:new_sessions") == 1
     await pool.aclose()

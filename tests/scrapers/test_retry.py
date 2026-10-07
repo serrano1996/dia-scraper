@@ -248,6 +248,7 @@ NOW = datetime(2026, 10, 7, 12, 0, 0, tzinfo=UTC)
         ("-3", None),
         ("", None),
         (None, None),
+        ("Wed, 21 Oct 99999999999999999999 07:28:00 GMT", None),  # overflows (review T14)
     ],
 )
 def test_parse_retry_after(value: str | None, expected: float | None) -> None:
