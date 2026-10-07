@@ -130,7 +130,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-17, RF-20
 - **Hecho cuando:** todos los casos pasan sin esperas reales.
 
-### [ ] T11 — Errores no reintentables y bloqueo de Akamai
+### [x] T11 — Errores no reintentables y bloqueo de Akamai
 - **RED:** en `test_retry.py`:
   - `404` → 1 llamada, `UpstreamUnavailableError` con `status_code == 404`;
   - `403` con `Content-Type: application/json` → igual que `404` (`status_code == 403`, no `UpstreamBlockedError`);
