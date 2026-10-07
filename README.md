@@ -75,7 +75,7 @@ curl "http://127.0.0.1:8000/api/v1/products?postal_code=28041&term=leche&page=1&
 | `422` | parámetros inválidos (no se llama a Dia) | formato de FastAPI |
 | `404` | Dia no da servicio en ese código postal, o no existe (Dia no los distingue) | `{"detail": "Postal code not served by Dia"}` |
 | `404` | `page` > 1 más allá de la última página | `{"detail": "Page out of range"}` |
-| `502` | Dia no responde, falla tras los reintentos, responde algo inesperado, responde con otro código postal o Akamai nos bloquea | `{"detail": "Upstream service unavailable"}` |
+| `502` | Dia no responde, falla tras los reintentos, responde algo inesperado, responde con otro código postal o Akamai nos bloquea; también durante un enfriamiento o con un límite de salida agotado (ver abajo) | `{"detail": "Upstream service unavailable"}` |
 
 Las respuestas correctas, incluidas las búsquedas sin resultados, se cachean en Redis
 `CACHE_TTL_SECONDS` por código postal, término (sin distinguir mayúsculas), página y tamaño de
@@ -91,6 +91,28 @@ la sesión anónima de Dia, no necesita la primera. Cada respuesta de Dia dice c
 la ha servido: si no es el pedido (la sesión caducó), la API abre otra sesión y repite una vez;
 si sigue sin serlo, responde `502`. Nunca devuelve datos de un código postal como si fueran de
 otro.
+
+### Protección frente a Akamai
+
+Dia está detrás de Akamai Bot Manager. Toda petición a Dia (búsquedas, cambios de código postal y
+reintentos) pasa antes por una puerta común, compartida por todas las instancias a través de Redis:
+
+- **Enfriamiento.** Si Akamai bloquea una petición (`403` HTML), la API deja de llamar a Dia durante
+  `AKAMAI_COOLDOWN_SECONDS`. Mientras dura, se sigue sirviendo todo lo que esté en cache (también
+  los `404` de códigos postales sin servicio); lo demás responde `502` al momento. Un segundo
+  bloqueo no lo alarga.
+- **Límite global.** Como mucho `DIA_RATE_LIMIT` peticiones a Dia cada `DIA_RATE_WINDOW_SECONDS`
+  (ventana deslizante). Pasado el límite, la petición no sale y responde `502`.
+- **Límite de códigos postales nuevos.** Como mucho `NEW_SESSION_LIMIT` sesiones nuevas (cada una
+  es un cambio de código postal en Dia) cada `NEW_SESSION_WINDOW_SECONDS`. Los códigos postales que
+  ya tienen sesión no se ven afectados.
+- **Reintentos irregulares.** Cada espera entre reintentos suma un aleatorio de hasta
+  `RETRY_JITTER_MAX_S`. Si Dia responde `429` con `Retry-After`, se espera lo que pide (si pide más
+  de 60 s, `502` sin reintentar).
+
+Cada enfriamiento y cada límite agotado deja un `WARNING` en el log. Los límites son una
+estimación prudente, no un umbral medido: Dia nunca bloqueó por ritmo en la investigación inicial.
+Ajústalos con esos avisos.
 
 ## Configuración
 
@@ -108,14 +130,20 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
 | `SESSION_MAX_AGE_SECONDS` | `3000` | una sesión de Dia se renueva pasado este tiempo desde su creación (la cookie de Dia dura 1 h) |
 | `MAX_SESSIONS` | `100` | sesiones de Dia abiertas a la vez; al superarlo se descarta la usada hace más tiempo |
 | `POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS` | `86400` | cuánto se recuerda que Dia no da servicio en un código postal |
+| `AKAMAI_COOLDOWN_SECONDS` | `300` | sin llamar a Dia tras un bloqueo de Akamai |
+| `DIA_RATE_LIMIT` | `30` | peticiones a Dia por ventana, entre todas las instancias (`0` = sin límite) |
+| `DIA_RATE_WINDOW_SECONDS` | `60` | ventana del límite anterior |
+| `NEW_SESSION_LIMIT` | `10` | códigos postales nuevos (sesiones) por ventana (`0` = sin límite) |
+| `NEW_SESSION_WINDOW_SECONDS` | `600` | ventana del límite anterior |
+| `RETRY_JITTER_MAX_S` | `0.3` | aleatorio máximo sumado a cada espera entre reintentos (`0` = sin aleatorio) |
 
 ## Limitaciones conocidas
 
 - **Sesiones en memoria.** Las sesiones de Dia viven en el proceso: cada instancia de la API
   tiene las suyas, y un reinicio las pierde (la siguiente búsqueda de cada código postal vuelve a
   costar 2 peticiones).
-- **Sin límite de códigos postales nuevos.** Muchos códigos postales distintos en poco tiempo son
-  muchos `PUT` a Dia desde la misma IP; el límite por ventana llega con la spec de anti-baneo.
+- **Límites sin medir.** Los valores por defecto de la protección frente a Akamai son una
+  estimación: pueden quedarse cortos o sobrar. El enfriamiento no crece con bloqueos repetidos.
 - **Precio sin tarjeta.** En ofertas Club Dia se devuelve el precio sin tarjeta y
   `price_format: null`, porque el precio por unidad que da Dia corresponde al precio con tarjeta.
 - **Total aproximado.** `total_results` es el de Dia, que puede desviarse en una unidad.

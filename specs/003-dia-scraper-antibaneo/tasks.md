@@ -96,3 +96,7 @@ Formato de commit: `<tipo>(003-dia-scraper-antibaneo): <descripción en inglés>
 - **Hacer:** README (sección "Protección frente a Akamai": enfriamiento, límites, jitter y `Retry-After`; tabla de configuración); `.env.example` (pedírselo al usuario si el agente no puede escribirlo). **Sin prueba manual de bloqueo** (spec §9): solo una búsqueda real para comprobar que la puerta no estorba el camino normal.
 - **Depende:** T12
 - **RF:** RNF-3. **Fin de PR4.**
+
+#### Resultado de la comprobación manual (2026-10-07)
+
+Una búsqueda real contra `https://www.dia.es` con la app completa (`lifespan`, puerta, limitadores) y Redis sustituido por `FakeAsyncRedis`: `postal_code=28041&term=aceite&page_size=5` → `200` en 534 ms, `total_results: 367`, 5 productos. En Redis, 1 hueco ocupado en `ratelimit:dia` y la entrada de cache; sin enfriamiento. **Sin prueba de bloqueo real** (spec §9): provocar uno pondría en riesgo la IP.
