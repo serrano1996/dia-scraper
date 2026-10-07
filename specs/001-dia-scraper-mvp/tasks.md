@@ -169,7 +169,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-13, RF-14
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T14 — Servicio: miss y metadatos
+### [x] T14 — Servicio: miss y metadatos
 - **RED:** `tests/services/test_product_service.py`, con un scraper falso y fakeredis:
   - miss → llama al scraper con el término recortado (sin pasar a minúsculas), `page` y `page_size`; devuelve los productos mapeados;
   - `search`: `postal_code` y `term` de la petición, `warehouse` = `cart.postal_code` de la respuesta (se prueba con un `cart.postal_code` distinto de `28041`), `strategy_used="api"`, `scraped_at` = reloj inyectado, `total_results=417`, `page`, `page_size`;
