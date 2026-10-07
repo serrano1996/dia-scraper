@@ -28,6 +28,7 @@ Accept: application/json, text/plain, */*
 - Los productos están en `search_items[]`, en una sola lista (sin grupos).
 - **Paginación por número**, no por cursor: `page` (desde 1) y `page_size`. La respuesta trae `pagination: {page_number, page_size, total_pages}` y `total_items`.
   - Sin `page_size` → 30 por página (lo que usa la web).
+  - **Mínimo 30.** Con `page_size` menor de 30, Dia devuelve 30 productos y `pagination.page_size: 30` (probados 5 y 29; 31 → 31 productos). Verificado el 2026-10-07 durante la prueba manual de la T20 de la spec 001. ✅
   - `page_size=100` → 100 por página, `total_pages: 5` (leche, 417 resultados).
   - `page_size=500` → **los 417 de golpe**, `total_pages: 1`. ❌ No se buscó el tope real.
   - `page` más allá de la última (`page=15` con 14 páginas) → `200` con `search_items: []`.

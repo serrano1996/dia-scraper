@@ -114,15 +114,14 @@ async def test_metadata_describes_the_search(redis, http_client) -> None:
     assert search.scraped_at == NOW
     assert search.total_results == 417
     assert (search.page, search.page_size) == (1, 50)
-    assert search.total_pages == 14
+    # Ours, from total_items and our page size, not Dia's pagination (plan-D9).
+    assert search.total_pages == 9  # ceil(417 / 50)
 
 
 async def test_total_pages_is_capped_at_max_page(redis, http_client) -> None:
-    body = fixture_body()
-    body["pagination"]["total_pages"] = 84
-    scraper = FakeScraper(body)
+    scraper = FakeScraper(fixture_body())
 
-    search = (await make_service(scraper, redis, http_client).search(query())).search
+    search = (await make_service(scraper, redis, http_client).search(query(page_size=5))).search
 
     assert search.total_pages == 20
 
@@ -226,3 +225,39 @@ async def test_upstream_errors_propagate_and_nothing_is_cached(
         await make_service(FakeScraper(error=error), redis, http_client).search(query())
 
     assert await redis.keys("*") == []
+
+
+# --- Page sizes below Dia's minimum of 30 (T21) ---
+
+
+def thirty_items_body() -> dict:
+    """The real leche page with 30 distinct products, as Dia sends for any size below 30."""
+    body = fixture_body()
+    template = body["search_items"][0]
+    body["search_items"] = [
+        template | {"object_id": f"P{n:02d}", "display_name": f"Product {n:02d}"}
+        for n in range(1, 31)
+    ]
+    body["pagination"] = {"page_number": 1, "page_size": 30, "total_pages": 14}
+    body["total_items"] = 418
+    return body
+
+
+async def test_a_small_page_asks_dia_for_the_page_that_contains_it(redis, http_client) -> None:
+    scraper = FakeScraper(thirty_items_body())
+
+    response = await make_service(scraper, redis, http_client).search(query(page=2, page_size=5))
+
+    call = scraper.calls[0]
+    assert (call["page"], call["page_size"]) == (1, 30)
+    assert [p.id for p in response.products] == ["P06", "P07", "P08", "P09", "P10"]
+    assert (response.search.page, response.search.page_size) == (2, 5)
+    assert response.search.total_pages == 20  # ceil(418 / 5) = 84, capped
+
+
+async def test_a_small_page_past_the_last_product_is_out_of_range(redis, http_client) -> None:
+    body = thirty_items_body()
+    body["search_items"] = body["search_items"][:12]  # the last Dia page holds 12 products
+
+    with pytest.raises(PageOutOfRangeError):
+        await make_service(FakeScraper(body), redis, http_client).search(query(page=4, page_size=5))

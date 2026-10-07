@@ -183,7 +183,10 @@ Espera entre el intento *n* y el *n+1*: `base_delay × 2^(n-1)`. Los tests inyec
 **D8 — Página fuera de rango se decide en el servicio**, no en el scraper: `page > 1` y `search_items` vacío → `PageOutOfRangeError`, antes de mapear y sin cachear (RF-7, RF-15). Se mira `search_items` crudo y no la lista mapeada: si Dia trae productos pero todos están rotos, no es "fuera de rango".
 - *Descartada:* comparar `page` con `pagination.total_pages`. `total_items` es aproximado (Fase 0 §1), así que `total_pages` también; el único dato fiable es si la página trae productos.
 
-**D9 — `total_pages = min(pagination.total_pages, MAX_PAGE)`**, `total_results = total_items` tal cual (RF-12). Dia calcula `total_pages` con el `page_size` que le enviamos, que es el de la petición.
+**D9 — `total_pages = min(ceil(total_items / page_size), MAX_PAGE)`**, calculado por nosotros con el `page_size` de la petición; `total_results = total_items` tal cual (RF-12). *Cambio sobre el plan aprobado (2026-10-07, T21):* el plan usaba `pagination.total_pages` de Dia, que es falso con `page_size` < 30 (Dia lo calcula con 30).
+
+**D17 — Ventana de Dia para `page_size` < 30 (spec-D9).** Función pura `dia_window(page, page_size) -> DiaWindow(page, page_size, offset)` en `app/services/pagination.py`: `page_size` de Dia = `page_size` si es ≥ 30, si no `page_size × ceil(30 / page_size)` (5 → 30, 7 → 35, 29 → 58); página de Dia = `(page − 1) × page_size // tamaño_dia + 1`; `offset` = el resto. Como el tamaño de Dia es múltiplo del nuestro, la página pedida nunca cruza dos páginas de Dia: sigue siendo 1 petición. El servicio recorta `search_items` crudos a `[offset : offset + page_size]` **antes** de comprobar fuera de rango y de mapear. La página de Dia más alta posible es la 20 (< 51, Fase 0 §1).
+- *Descartada:* recortar después de mapear. El descarte de productos rotos cambiaría qué productos caen en cada página.
 
 **D10 — Cache corrupta = miss.** Si el JSON guardado no valida contra `ProductSearchResponse`, se trata como miss y se sobrescribe (Alcampo plan 001 D8).
 

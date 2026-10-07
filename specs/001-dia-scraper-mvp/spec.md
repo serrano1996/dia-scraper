@@ -37,7 +37,7 @@ Esta spec entrega lo mínimo útil: buscar productos por texto en Dia y devolver
 
 ### Búsqueda
 
-- **RF-3.** CUANDO se consulte Dia, EL sistema DEBERÁ hacer **una sola** petición (sin contar reintentos) a `GET {DIA_BASE_URL}/api/v1/search-back/search/reduced` con `q=<term normalizado>`, `page=<page>` y `page_size=<page_size>`. La página pedida al consumidor es la página pedida a Dia: no hay recorrido ni cursor.
+- **RF-3.** CUANDO se consulte Dia, EL sistema DEBERÁ hacer **una sola** petición (sin contar reintentos) a `GET {DIA_BASE_URL}/api/v1/search-back/search/reduced` con `q=<term normalizado>`, `page` y `page_size`. Con `page_size` ≥ 30, son los de la petición. Dia nunca devuelve menos de 30 productos por página (Fase 0 §1), así que con `page_size` < 30 EL sistema DEBERÁ pedir a Dia el menor múltiplo de `page_size` que sea ≥ 30, la página de Dia que contiene la pedida, y quedarse solo con los `page_size` productos de esa página (D9). No hay recorrido ni cursor.
 - **RF-4.** EL sistema DEBERÁ enviar en **todas** las peticiones a Dia un conjunto de cabeceras coherente con un Chrome de escritorio: `User-Agent`, `Accept`, `Accept-Language`, `sec-ch-ua`, `sec-ch-ua-mobile`, `sec-ch-ua-platform`, `Sec-Fetch-Dest`, `Sec-Fetch-Mode`, `Sec-Fetch-Site` y `Referer`, con la versión de Chrome del `User-Agent` igual a la de `sec-ch-ua` (Fase 0 §5). Sin ellas, Akamai responde `403` a la primera petición.
 - **RF-5.** EL sistema DEBERÁ devolver los productos de `search_items[]` en el orden en que llegan (orden por defecto de Dia, `rating` descendente). SI un `object_id` aparece más de una vez, ENTONCES DEBERÁ conservar solo la primera aparición.
 - **RF-6.** CUANDO Dia devuelva `search_items` vacío en la página 1, EL sistema DEBERÁ responder `200` con `products: []`, `total_results: 0` y `total_pages: 0`.
@@ -52,7 +52,7 @@ Esta spec entrega lo mínimo útil: buscar productos por texto en Dia y devolver
 
 ### Metadatos de la búsqueda
 
-- **RF-12.** EL sistema DEBERÁ rellenar `search` con: `postal_code` de la petición; `term` normalizado (recortado), como Mercadona; `warehouse` = `cart.postal_code` de la respuesta de Dia, el CP con el que Dia ha servido la búsqueda (D6); `strategy_used: "api"`; `scraped_at` = instante UTC de la consulta a Dia; `total_results` = `total_items` de Dia; `page` y `page_size` de la petición; `total_pages` = `min(pagination.total_pages, MAX_PAGE)`.
+- **RF-12.** EL sistema DEBERÁ rellenar `search` con: `postal_code` de la petición; `term` normalizado (recortado), como Mercadona; `warehouse` = `cart.postal_code` de la respuesta de Dia, el CP con el que Dia ha servido la búsqueda (D6); `strategy_used: "api"`; `scraped_at` = instante UTC de la consulta a Dia; `total_results` = `total_items` de Dia; `page` y `page_size` de la petición; `total_pages` = `min(ceil(total_items / page_size), MAX_PAGE)`, calculado con el `page_size` de la petición (D9).
 
 ### Cache
 
@@ -171,3 +171,4 @@ Todas con la opción recomendada en el borrador.
 | D6 | `warehouse` | `cart.postal_code` de la respuesta de Dia | Dia no expone tienda; el CP efectivo es lo que decide el catálogo y no se desfasa (RF-12) |
 | D7 | Bloqueo de Akamai (`403` HTML) | `UpstreamBlockedError` → `502` inmediato, sin reintento | No se castiga más la reputación de la IP (RF-19) |
 | D8 | `price_format` con oferta Club Dia | `null` | No se inventa un precio por unidad que Dia no da (RF-10) |
+| D9 | `page_size` < 30 (descubierto en la prueba manual de la T20, 2026-10-07: Dia devuelve como mínimo 30) | Recortar de nuestro lado: pedir a Dia un múltiplo del `page_size` ≥ 30 y servir solo el trozo pedido | Se mantiene el contrato de Mercadona (1–100) y 1 petición por página (RF-3, RF-12). Descartadas: subir el mínimo a 30 (rompe la paridad) y pedir siempre 30 (2–4 peticiones por página grande) |

@@ -185,3 +185,24 @@ def test_persistent_server_errors_answer_502_after_every_attempt(
     assert response.json() == {"detail": "Upstream service unavailable"}
     assert route.call_count == 3  # RETRY_MAX_ATTEMPTS default
     assert harness.cache_keys() == []
+
+
+# --- Page sizes below Dia's minimum of 30 (T21) ---
+
+
+def test_a_small_page_is_cut_from_the_dia_page_that_holds_it(
+    harness: Harness, respx_mock: respx.MockRouter
+) -> None:
+    body = load_fixture("dia_search_leche.json")
+    template = body["search_items"][0]
+    body["search_items"] = [template | {"object_id": f"P{n:02d}"} for n in range(1, 31)]
+    body["total_items"] = 418
+    route = mock_dia_search(respx_mock, json_body=body)
+
+    response = harness.client.get(URL, params=PARAMS | {"page": 2, "page_size": 5})
+
+    assert response.status_code == 200
+    query = dict(httpx.QueryParams(route.calls.last.request.url.query))
+    assert (query["page"], query["page_size"]) == ("1", "30")
+    assert [p["id"] for p in response.json()["products"]] == ["P06", "P07", "P08", "P09", "P10"]
+    assert response.json()["search"]["total_pages"] == 20

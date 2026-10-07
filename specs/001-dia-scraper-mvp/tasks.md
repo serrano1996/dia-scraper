@@ -238,7 +238,17 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RNF-5 (constitución #13)
 - **Hecho cuando:** el test pasa y se ha visto fallar.
 
-### [ ] T20 — Docs vivas y prueba manual
+### [x] T21 — `page_size` menor de 30 (descubierto en la prueba manual de la T20)
+- **RED:**
+  - `tests/services/test_pagination.py`: `dia_window` → `(1, 5)` = página 1 de 30, offset 0; `(2, 5)` = página 1, offset 5; `(7, 5)` = página 2, offset 0; `(3, 7)` = página 1 de 35, offset 14; `(2, 29)` = página 1 de 58, offset 29; `(3, 50)` = página 3 de 50, offset 0; nunca supera la página 20.
+  - `test_product_service.py`: `page=2, page_size=5` con 30 productos crudos → scraper llamado con `page=1, page_size=30` y respuesta con los productos 6–10; `total_pages = ceil(418 / 5)` con tope 20; página cuyo trozo está vacío → `PageOutOfRangeError`.
+  - Integración: `page=2, page_size=5` → Dia recibe `page=1&page_size=30` y la API devuelve 5 productos.
+- **GREEN:** `app/services/pagination.py` y el recorte en `ProductService` (plan-D17, plan-D9).
+- **Depende:** T15
+- **RF:** RF-3, RF-7, RF-12 (spec-D9)
+- **Hecho cuando:** todos los casos pasan y la prueba manual de la T20 da 5 productos y `total_pages` correcto.
+
+### [x] T20 — Docs vivas y prueba manual
 - **Hacer:**
   - `README.md`: endpoint, parámetros, ejemplo de respuesta, errores, variables de entorno, y **limitaciones conocidas**: CP por defecto `28041` hasta la spec 002 (spec-D2), precio sin tarjeta Club (spec-D3, spec-D8), `total_results` aproximado (Fase 0 §1), dependencia de la huella ante Akamai (R1, R2).
   - `.env.example` con todas las variables de RF-23 (si el agente no puede escribirlo, pedírselo al usuario, R6).
@@ -247,3 +257,16 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **Depende:** T18, T19
 - **RF:** RNF-6, criterios de finalización de la spec
 - **Hecho cuando:** README y `.env.example` actualizados y la prueba manual anotada. **Fin de PR4.**
+
+#### Resultado de la prueba manual (2026-10-07)
+
+App real (`create_app()` + `lifespan` + cliente HTTP real) contra `https://www.dia.es`. Sin Redis local (sin `redis-server` y con Docker parado), así que Redis se sustituyó por `FakeAsyncRedis`; todo lo demás, real.
+
+| Petición | Resultado |
+|---|---|
+| `/docs` | `200`; `SearchMetadata` con sus 9 campos y `Product` con sus 6 |
+| `term=leche&page_size=5` (1.ª, miss) | `200` en 369 ms, `warehouse: "28041"`, `total_results: 418`… pero **30 productos y `total_pages: 14`**: Dia no baja de 30 por página. Investigado en vivo (`page_size` 5, 29, 31, 50) → **T21** |
+| `term=leche&page=2&page_size=5` tras T21 (miss) | `200` en 314 ms, **5 productos** (del 6 al 10 de la búsqueda), `total_pages: 20` (84 con tope) |
+| La misma otra vez (hit) | `200` en 1 ms, mismo `scraped_at`, 0 peticiones a Dia; clave `search:28041:leche:2:5` |
+
+Peticiones reales a Dia: 3 por la API más 4 de investigación del mínimo de 30. Sin bloqueos de Akamai.
