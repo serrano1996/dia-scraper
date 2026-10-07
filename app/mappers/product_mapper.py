@@ -3,7 +3,9 @@
 import logging
 from types import MappingProxyType
 
-from app.models.dia import DiaProduct
+from pydantic import ValidationError
+
+from app.models.dia import DiaProduct, DiaSearchResponse
 from app.models.product import Product
 
 logger = logging.getLogger(__name__)
@@ -52,3 +54,24 @@ def map_product(raw: DiaProduct, *, base_url: str) -> Product:
         image_url=f"{base_url.rstrip('/')}/{raw.image.lstrip('/')}",
         category=raw.l2_category_description,
     )
+
+
+def map_search(raw: DiaSearchResponse, *, base_url: str) -> list[Product]:
+    """Map every valid product, in Dia's order (RF-5, RF-11).
+
+    Each item is validated on its own: a broken one is discarded instead of
+    failing the whole page (plan-D1). A repeated `object_id` keeps its first
+    appearance.
+    """
+    products: list[Product] = []
+    seen: set[str] = set()
+    for item in raw.search_items:
+        try:
+            product = DiaProduct.model_validate(item)
+        except ValidationError:
+            continue
+        if product.object_id in seen:
+            continue
+        seen.add(product.object_id)
+        products.append(map_product(product, base_url=base_url))
+    return products

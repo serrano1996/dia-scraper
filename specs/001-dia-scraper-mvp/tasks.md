@@ -96,7 +96,7 @@ Formato de commit: `<tipo>(001-dia-scraper-mvp): <descripción en inglés> (Tn)`
 - **RF:** RF-8, RF-10 (spec-D3, spec-D4, spec-D8)
 - **Hecho cuando:** todos los casos pasan.
 
-### [ ] T8 — Mapeo de la búsqueda (descarte y deduplicación)
+### [x] T8 — Mapeo de la búsqueda (descarte y deduplicación)
 - **RED:** `test_map_search_*`, construidos a partir de la fixture real:
   - `dia_search_leche.json` → 3 productos en orden;
   - un `object_id` repetido → sin duplicado, primera aparición conservada;
