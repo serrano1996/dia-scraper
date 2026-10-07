@@ -41,7 +41,7 @@ Formato de commit: `<tipo>(002-dia-scraper-postal-code-resolution): <descripció
 - **Depende:** T2
 - **RF:** RF-1, RF-2, RF-4, RF-6
 
-### [ ] T4 — Cache negativa
+### [x] T4 — Cache negativa
 - **RED:** `tests/services/test_postal_code_cache.py` con fakeredis: sin entrada → `False`; `mark("35001", ttl)` → `True` y TTL aplicado en `postal_code:not_served:35001`; otro CP → `False`.
 - **GREEN:** `app/services/postal_code_cache.py`.
 - **RF:** RF-5 (spec-D5). **Fin de PR1.**
