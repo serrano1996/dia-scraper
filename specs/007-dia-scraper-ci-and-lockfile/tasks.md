@@ -34,7 +34,7 @@ Formato de commit: `<tipo>(007-dia-scraper-ci-and-lockfile): <descripción en in
 - **Hacer:** README (instalar desde los locks en Linux/macOS, `pip install -e ".[dev]"` en Windows, `scripts/lock.sh` y `--upgrade`, quitar la limitación "sin lockfile", la CI) y `AGENTS.md` (comandos). La comprobación de que la CI pasa en GitHub queda para después del push del usuario.
 - **RF:** RF-11
 
-- **Pendiente tras el push del usuario:** comprobar que el primer run de la CI en GitHub pasa (el agente no hace push).
+- **Primer run en GitHub (2026-10-08, run 37765229231, tras el push del usuario):** ✅ `success` en 54 s, todos los pasos en verde: instalación con hashes y `pip check` ("No broken requirements found"), `ruff`, `ruff format`, `mypy`, **599 tests en 6,37 s** (los del compose incluidos, sin saltarse) y `docker build`. Sin avisos de obsolescencia: `actions/checkout@v7` y `actions/setup-python@v7` existen y funcionan.
 
 ---
 
