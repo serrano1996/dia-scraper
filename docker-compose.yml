@@ -1,0 +1,32 @@
+# Spec 006: the API plus a local Redis for development and testing. In
+# production, point REDIS_URL at any other Redis and skip the `redis` service.
+
+services:
+  api:
+    build: .
+    env_file:
+      # Optional: right after cloning only .env.example exists. Without .env
+      # the API still exits at startup with a clear ValidationError (RF-7, RF-11).
+      - path: .env
+        required: false
+    environment:
+      # Overrides a local REDIS_URL=redis://localhost:... from .env: inside the
+      # compose network, localhost is the api container itself (RF-8).
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      # Wait until Redis answers, not just until its container exists: a search
+      # without Redis is a 500 (RF-9, spec-D2).
+      redis:
+        condition: service_healthy
+
+  redis:
+    # Major version pinned, never `latest`. No volume: cache, cooldown and
+    # limits are ephemeral. No published port: only the api needs it (RF-10).
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

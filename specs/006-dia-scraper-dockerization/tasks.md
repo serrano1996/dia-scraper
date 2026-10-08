@@ -25,7 +25,7 @@ Formato de commit: `<tipo>(006-dia-scraper-dockerization): <descripción en ingl
 - **GREEN:** `Dockerfile` (plan-D1, D3, D4, D6).
 - **RF:** RF-1, RF-2, RF-3, RF-5, RF-6, RF-12, RF-13
 
-### [ ] T3 — `docker-compose.yml`
+### [x] T3 — `docker-compose.yml`
 - **RED:** `tests/infra/test_compose.py` (con `docker compose config` sobre una copia, plan-D5): `REDIS_URL=redis://redis:6379/0`; `service_healthy`; `ping`; puerto `8000`; Redis sin puerto; sin `.env` funciona; un `.env` sintético se carga y no cambia `REDIS_URL`; sin `API_KEYS` en el fichero.
 - **GREEN:** `docker-compose.yml`.
 - **RF:** RF-6, RF-8, RF-9, RF-10, RF-11
