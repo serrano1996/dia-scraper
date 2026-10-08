@@ -22,6 +22,7 @@ OPTIONAL = [
     "NEW_SESSION_LIMIT",
     "NEW_SESSION_WINDOW_SECONDS",
     "RETRY_JITTER_MAX_S",
+    "API_KEYS",
 ]
 
 
@@ -198,3 +199,41 @@ def test_an_unknown_log_level_fails_at_startup(monkeypatch: pytest.MonkeyPatch, 
 
     with pytest.raises(ValidationError, match="LOG_LEVEL"):
         Settings(_env_file=None)
+
+
+# --- API_KEYS (spec 005 RF-8, RF-11, T1) ---
+
+
+def test_without_api_keys_nobody_authenticates(monkeypatch: pytest.MonkeyPatch) -> None:
+    set_required(monkeypatch)
+
+    assert Settings(_env_file=None).api_keys == frozenset()
+
+
+@pytest.mark.parametrize(
+    ("value", "keys"),
+    [
+        (" a , ,b ", {"a", "b"}),
+        ("a,b", {"a", "b"}),  # not read as JSON (plan-D1)
+        ("single", {"single"}),
+        (" , ,", set()),
+        ("", set()),
+    ],
+)
+def test_api_keys_are_comma_separated_trimmed_and_non_empty(
+    monkeypatch: pytest.MonkeyPatch, value: str, keys: set[str]
+) -> None:
+    set_required(monkeypatch)
+    monkeypatch.setenv("API_KEYS", value)
+
+    assert Settings(_env_file=None).api_keys == frozenset(keys)
+
+
+def test_api_keys_never_appear_in_the_settings_repr(monkeypatch: pytest.MonkeyPatch) -> None:
+    set_required(monkeypatch)
+    monkeypatch.setenv("API_KEYS", "synthetic-secret-1,synthetic-secret-2")
+
+    settings = Settings(_env_file=None)
+
+    assert "synthetic-secret" not in repr(settings)
+    assert "synthetic-secret" not in str(settings)

@@ -1,6 +1,6 @@
 # Plan 005 — Autenticación
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-08)
 - **Fecha:** 2026-10-08
 - **Spec:** [spec.md](spec.md) (aprobada). Sus decisiones se citan como **spec-D1…spec-D6**; las de este plan, **D1…**.
 - **Base:** `alcampo-scraper/app/core/security.py` (su spec 004), ya probado.

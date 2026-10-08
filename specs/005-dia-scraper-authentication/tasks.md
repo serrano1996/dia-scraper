@@ -1,6 +1,6 @@
 # Tasks 005 — Autenticación
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-08)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 2 PRs encadenados (stacked). Cada PR deja la suite en verde.
 
@@ -17,7 +17,7 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 
 ## PR1 — Configuración, comprobación y router
 
-### [ ] T1 — `API_KEYS`
+### [x] T1 — `API_KEYS`
 - **RED:** `test_config.py`: sin variable → `frozenset()`; `" a , ,b "` → `{"a", "b"}`; `"a,b"` no falla (no se lee como JSON); `" , ,"` → vacío; `repr(settings)` no contiene los tokens.
 - **GREEN:** `Settings.api_keys` (plan-D1).
 - **RF:** RF-8, RF-11
