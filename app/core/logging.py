@@ -65,3 +65,5 @@ def configure_logging(level: str, *, stream: TextIO | None = None) -> None:
     # httpx logs every request at INFO with its full URL, which carries the
     # client's term and postal code: our own lines give the path (plan-D4).
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    # At DEBUG httpcore logs request and response headers, cookies included (review T13).
+    logging.getLogger("httpcore").setLevel(logging.WARNING)

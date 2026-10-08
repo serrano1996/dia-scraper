@@ -18,8 +18,10 @@ def restore_logging_state() -> Iterator[None]:
     handlers, level = list(root.handlers), root.level
     factory = logging.getLogRecordFactory()
     httpx_level = logging.getLogger("httpx").level
+    httpcore_level = logging.getLogger("httpcore").level
     yield
     root.handlers[:] = handlers
     root.setLevel(level)
     logging.setLogRecordFactory(factory)
     logging.getLogger("httpx").setLevel(httpx_level)
+    logging.getLogger("httpcore").setLevel(httpcore_level)

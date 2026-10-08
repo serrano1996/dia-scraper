@@ -141,7 +141,8 @@ class ProductService:
             if answered == query.postal_code:
                 return raw
             self._sessions.discard(query.postal_code, session, reason="mismatch")
-        logger.warning("postal code mismatch expected=%s got=%s", query.postal_code, answered)
+        # %r: `answered` comes from Dia and could carry control characters (review T13).
+        logger.warning("postal code mismatch expected=%r got=%r", query.postal_code, answered)
         raise UpstreamUnavailableError("Dia answered for another postal code")
 
     async def _session_for(self, postal_code: str) -> PostalCodeSession:

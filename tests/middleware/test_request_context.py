@@ -89,7 +89,8 @@ def test_an_unhandled_error_is_a_logged_500_without_its_message(
     assert response.json() == {"detail": "Internal server error"}
     assert "secret internal detail" not in response.text
     [error] = [r for r in messages(caplog) if r.levelno == logging.ERROR]
-    assert error.exc_info is not None
+    assert "type=RuntimeError" in error.getMessage()
+    assert "frames=" in error.getMessage()  # the traceback, without the message (T13)
     assert "status=500" in messages(caplog)[-1].getMessage()
 
 
@@ -111,3 +112,52 @@ def test_outside_a_request_the_id_is_a_dash(caplog: pytest.LogCaptureFixture) ->
         logging.getLogger("x").info("startup")
 
     assert caplog.records[-1].request_id == "-"
+
+
+# --- Fixes from the fresh review (T13) ---
+
+
+def test_an_unhandled_error_logs_its_type_and_frames_but_not_its_message(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = FastAPI()
+
+    @app.get("/leak")
+    async def leak() -> dict[str, str]:
+        # Built at run time, as a Dia body fragment would be: the frames show the
+        # source line, never the values (the source does not hold the secret).
+        secret = "-".join(["session_id=abc", "from", "a", "Dia", "body"])
+        raise ValueError(secret)
+
+    app.add_middleware(RequestContextMiddleware)
+
+    with caplog.at_level(logging.INFO):
+        TestClient(app, raise_server_exceptions=False).get("/leak")
+
+    [error] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    text = caplog.text
+    assert "type=ValueError" in error.getMessage()
+    assert "def leak" in text or "in leak" in text  # the frames are there
+    assert "session_id=abc-from" not in text
+
+
+def test_long_query_strings_are_truncated(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.INFO):
+        client.get("/ok", params={"term": "x" * 5000})
+
+    start = messages(caplog)[0].getMessage()
+    assert len(start) < 700
+    assert "truncated" in start
+
+
+def test_repeated_params_are_all_logged(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.INFO):
+        client.get("/ok?term=first&term=second")
+
+    start = messages(caplog)[0].getMessage()
+    assert "first" in start
+    assert "second" in start

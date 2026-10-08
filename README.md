@@ -134,15 +134,15 @@ Texto plano a `stderr`, una línea por evento:
 | `404` (código postal sin servicio, página fuera de rango) | `INFO` |
 | Sesión de Dia creada o retirada, con su motivo | `INFO` |
 | Reintento | `WARNING` |
-| Enfriamiento activo o límite de salida agotado (`502` previsto) | `WARNING` |
+| Enfriamiento activo, límite de salida agotado o búsqueda bloqueada (`502`; el `ERROR` es el del bloqueo) | `WARNING` |
 | Productos descartados por formato, cache corrupta, unidad desconocida, discrepancia de código postal | `WARNING` |
 | Bloqueo de Akamai (con la ruta y el estado del enfriamiento) | `ERROR` |
 | Reintentos agotados, `4xx` no reintentable, respuesta de Dia inesperada, `502` no previsto | `ERROR` |
 | **Todos** los productos de una respuesta descartados (probable cambio de formato en Dia) | `ERROR` |
-| Error no controlado (`500`, con traceback) | `ERROR` |
+| Error no controlado (`500`): tipo de la excepción y frames, nunca su mensaje | `ERROR` |
 
 Nunca se registran cookies (`session_id` ni las de Akamai), cabeceras completas, cuerpos de las
-respuestas de Dia ni URLs con parámetros: de las peticiones a Dia solo consta la ruta. Los valores
+respuestas de Dia, mensajes de excepciones ni URLs con parámetros: de las peticiones a Dia solo consta la ruta. Los valores
 que manda el cliente aparecen escapados (`%r`), así que un salto de línea no puede fabricar una
 línea falsa. El access log de uvicorn sigue emitiendo su propia línea por petición, sin request
 id; si sobra, `uvicorn app.main:app --no-access-log`.

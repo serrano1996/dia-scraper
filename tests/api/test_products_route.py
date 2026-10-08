@@ -169,3 +169,16 @@ def test_404_answers_are_info(caplog: pytest.LogCaptureFixture, error) -> None:
     assert "X-Request-ID" in response.headers
     [record] = records(caplog)
     assert record.levelno == logging.INFO
+
+
+def test_an_akamai_block_is_a_warning_here_the_error_is_the_gates(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # spec-D3: the gate's block is the only ERROR of the episode (review T13).
+    error = UpstreamBlockedError("blocked by Akamai (403 HTML)", status_code=403)
+
+    with caplog.at_level(logging.INFO):
+        client_with(FakeService(error)).get(URL, params=PARAMS)
+
+    [record] = records(caplog)
+    assert record.levelno == logging.WARNING

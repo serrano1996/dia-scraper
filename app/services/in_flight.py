@@ -25,6 +25,9 @@ class InFlight(Generic[T]):
         through `asyncio.shield`, so a client that disconnects cancels its own
         wait, never the work the others depend on.
         """
+        # The task copies the first caller's context: its lines (retries, a block,
+        # "session created") carry that caller's request id, even for the others
+        # waiting on it, and even if that caller disconnects (review T13).
         task = self._tasks.get(key)
         shared = task is not None
         if task is None:

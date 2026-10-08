@@ -87,3 +87,10 @@ async def test_httpx_never_logs_the_url_with_the_clients_term(
 
     assert logging.getLogger("httpx").level == logging.WARNING
     assert not [r for r in caplog.records if r.name == "httpx"]
+
+
+def test_httpcore_is_silenced_too() -> None:
+    # At DEBUG httpcore logs headers, cookies included (review T13).
+    configure_logging("DEBUG", stream=io.StringIO())
+
+    assert logging.getLogger("httpcore").level == logging.WARNING

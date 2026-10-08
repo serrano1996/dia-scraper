@@ -388,8 +388,8 @@ async def test_two_mismatches_answer_502_warn_and_cache_nothing(
         await make_service(scraper, redis, sessions).search(query(postal_code="08001"))
 
     assert len(scraper.calls) == 2
-    assert "expected=08001" in caplog.text
-    assert "got=28041" in caplog.text
+    assert "expected='08001'" in caplog.text
+    assert "got='28041'" in caplog.text
     assert await redis.keys("*") == []
 
 
@@ -438,3 +438,20 @@ async def test_a_failed_put_does_not_mark_the_postal_code(redis, sessions) -> No
         )
 
     assert await redis.keys("*") == []
+
+
+async def test_a_mismatch_warning_escapes_the_value_dia_sent(
+    redis, sessions, caplog: pytest.LogCaptureFixture
+) -> None:
+    # The answered postal code comes from Dia: %r, so it cannot forge lines (review T13).
+    newline = chr(10)
+    forged = "28041" + newline + "ERROR forged"
+    scraper = SequenceScraper(body_for(forged), body_for(forged))
+
+    with (
+        caplog.at_level(logging.WARNING, logger="app.services.product_service"),
+        pytest.raises(UpstreamUnavailableError),
+    ):
+        await make_service(scraper, redis, sessions).search(query(postal_code="08001"))
+
+    assert all(newline not in r.getMessage() for r in caplog.records)

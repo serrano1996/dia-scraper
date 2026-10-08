@@ -105,3 +105,15 @@ INFO app.middleware.request_context [4813a996…] request finished status=422 du
 - Ninguna línea de `httpx` con la URL de Dia (el `PUT` y la búsqueda no aparecen salvo en la creación de sesión).
 - Aparecen además líneas `INFO httpx2 [-] HTTP Request: GET http://testserver/…`: son del cliente de pruebas de Starlette llamando a nuestra API, no existen con `uvicorn` (que emite en su lugar su access log).
 - Los errores de Dia (reintentos, bloqueo, formato inesperado) se verifican solo con respx: provocarlos en real no es posible o arriesga la IP.
+
+---
+
+## Revisión con contexto nuevo (2026-10-08)
+
+Revisión adversarial de `82feb83..HEAD` (app y tests) antes del PR: 0 CRITICAL, 3 WARNING, 6 SUGGESTION. Los tres WARNING y dos SUGGESTION se aplican en T13.
+
+### [x] T13 — Correcciones de la revisión
+- **RED:** un error no controlado registra su tipo y sus frames, pero no su mensaje (un `ValidationError` lleva `input_value`, que puede ser un trozo de un cuerpo de Dia); una query de 5000 caracteres se trunca; los parámetros repetidos aparecen todos; el CP que devuelve Dia en una discrepancia se registra con `%r`; un bloqueo de Akamai deja `WARNING` en el handler de `502` (el `ERROR` es el de la puerta, spec-D3); `httpcore` queda en `WARNING` (en `DEBUG` registra cabeceras con cookies).
+- **GREEN:** `RequestContextMiddleware` registra `type=… frames=%r` en una sola línea y limita los parámetros a 500 caracteres con `multi_items()`; `%r` en la discrepancia; handler de `502` con rama propia para `UpstreamBlockedError`; `httpcore` a `WARNING`; comentario en `InFlight` sobre el request id de la tarea compartida.
+- **No aplicadas:** apilamiento de fábricas si otra librería cambia la suya (inofensivo, no pasa en producción); test de que `create_app()` no toca el logging global; mensaje propio para una respuesta cortada a medias; los dos `ERROR` de reintentos agotados (RF-7 y RF-10 los piden).
+- **RF:** RF-6, RF-11, RF-17, RF-18

@@ -15,6 +15,7 @@ from app.core.state import AppResources
 from app.exceptions import (
     PageOutOfRangeError,
     PostalCodeNotServedError,
+    UpstreamBlockedError,
     UpstreamThrottledError,
     UpstreamUnavailableError,
 )
@@ -90,7 +91,10 @@ def create_app() -> FastAPI:
         postal_code = request.query_params.get("postal_code")
         term = request.query_params.get("term")
         # Client values through %r: they cannot forge lines (spec 004 RF-17).
-        if isinstance(exc, UpstreamThrottledError):
+        if isinstance(exc, UpstreamBlockedError):
+            # The gate already logged the block as the episode's only ERROR (spec-D3).
+            logger.warning("search blocked by akamai postal_code=%r term=%r", postal_code, term)
+        elif isinstance(exc, UpstreamThrottledError):
             # Foreseen and managed: the actionable ERROR was the block (RF-7, spec-D2).
             logger.warning(
                 "search throttled reason=%r postal_code=%r term=%r", exc.reason, postal_code, term
