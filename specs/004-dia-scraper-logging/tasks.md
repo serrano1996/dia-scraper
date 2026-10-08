@@ -46,7 +46,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** `send_with_retry(..., path=…)`; el scraper y la sesión pasan su ruta (plan-D7).
 - **RF:** RF-9, RF-10
 
-### [ ] T6 — Bloqueo de Akamai en `ERROR`
+### [x] T6 — Bloqueo de Akamai en `ERROR`
 - **RED:** `test_outbound.py`: `blocked(path)` → 1 `ERROR` con ruta, `cooldown=started` y segundos; el segundo → `ERROR` con `cooldown=already_active`; ya no hay `WARNING` de activación. `test_retry.py`: la puerta recibe la ruta.
 - **GREEN:** `OutboundGate.blocked(path)` y el `Gate` de `retry.py` (plan-D8).
 - **RF:** RF-11. **Fin de PR2.**

@@ -409,3 +409,16 @@ async def test_a_success_at_once_logs_nothing(caplog: pytest.LogCaptureFixture) 
         await send_with_retry(FakeSend(response(200)), max_attempts=3, base_delay=0, path="/x")
 
     assert retry_records(caplog) == []
+
+
+async def test_the_gate_is_told_which_path_akamai_blocked() -> None:
+    # spec 004 RF-11, T6.
+    blocked = response(403, text=AKAMAI_ACCESS_DENIED, headers={"Content-Type": "text/html"})
+    gate = FakeGate()
+
+    with pytest.raises(UpstreamBlockedError):
+        await send_with_retry(
+            FakeSend(blocked), max_attempts=3, base_delay=0, sleep=FakeSleep(), gate=gate, path="/x"
+        )
+
+    assert gate.blocked_paths == ["/x"]

@@ -28,7 +28,7 @@ class Gate(Protocol):
     """What `send_with_retry` needs from `OutboundGate` (spec 003 plan-D1)."""
 
     async def admit(self) -> None: ...
-    async def blocked(self) -> None: ...
+    async def blocked(self, path: str) -> None: ...
 
 
 # Longest wait a 429's Retry-After may ask for; above it, no retry (spec 003 RF-10, plan-D6).
@@ -150,7 +150,7 @@ async def send_with_retry(
                 _raise_if_rejected(response)
             except UpstreamBlockedError:
                 if gate is not None:
-                    await gate.blocked()
+                    await gate.blocked(path)
                 raise
             except UpstreamUnavailableError:
                 logger.error("non-retryable upstream status=%d path=%s", response.status_code, path)

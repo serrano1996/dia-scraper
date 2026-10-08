@@ -35,7 +35,15 @@ class OutboundGate:
             )
             raise
 
-    async def blocked(self) -> None:
-        """Akamai blocked a request: stop calling Dia for a while (RF-1)."""
+    async def blocked(self, path: str) -> None:
+        """Akamai blocked a request to `path`: stop calling Dia for a while (spec 003 RF-1).
+
+        One ERROR per block, the actionable event of the episode (spec 004 RF-11,
+        spec-D3); the refusals it causes are WARNINGs. `path` has no parameters.
+        """
         if await self._cooldown.activate():
-            logger.warning("akamai cooldown activated seconds=%d", self._cooldown.seconds)
+            logger.error(
+                "akamai block path=%s cooldown=started seconds=%d", path, self._cooldown.seconds
+            )
+        else:
+            logger.error("akamai block path=%s cooldown=already_active", path)

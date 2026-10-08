@@ -54,16 +54,19 @@ async def test_admit_past_the_limit_refuses_and_warns(
     assert "limit=dia" in caplog.text
 
 
-async def test_blocked_starts_the_cooldown_and_warns_once(
+async def test_a_block_is_one_error_naming_the_path_and_the_cooldown(
     redis: FakeAsyncRedis, caplog: pytest.LogCaptureFixture
 ) -> None:
+    # spec 004 RF-11, spec-D3: the actionable event of the whole episode.
     gate = make_gate(redis)
 
-    with caplog.at_level(logging.WARNING, logger=LOGGER):
-        await gate.blocked()
-        await gate.blocked()
+    with caplog.at_level(logging.INFO, logger=LOGGER):
+        await gate.blocked("/api/v1/search-back/search/reduced")
+        await gate.blocked("/api/v1/common-aggregator/save-shipping-address")
 
     assert await redis.exists(COOLDOWN_KEY)
-    warnings = [r for r in caplog.records if "akamai cooldown activated" in r.getMessage()]
-    assert len(warnings) == 1
-    assert "seconds=300" in warnings[0].getMessage()
+    first, second = [r for r in caplog.records if r.name == LOGGER]
+    assert first.levelno == second.levelno == logging.ERROR
+    assert "path=/api/v1/search-back/search/reduced" in first.getMessage()
+    assert "cooldown=started seconds=300" in first.getMessage()
+    assert "cooldown=already_active" in second.getMessage()
