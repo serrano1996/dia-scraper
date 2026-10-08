@@ -51,3 +51,15 @@ Formato de commit: `<tipo>(006-dia-scraper-dockerization): <descripción en ingl
 | `docker compose logs api` | ✅ request id en cada línea, `WARNING` del rechazo, sesión creada; el token no aparece; ninguna línea del access log de uvicorn |
 
 Al terminar: `docker compose down`, imagen y directorio temporal borrados.
+
+---
+
+## Revisión con contexto nuevo (2026-10-08)
+
+Revisión adversarial de `eeffb59..HEAD` antes del PR: 0 CRITICAL, 8 WARNING, 3 SUGGESTION. Sin secretos en capas ni en el contexto de build.
+
+### [x] T5 — Correcciones de la revisión
+- **RED:** el `.dockerignore` readmite `README.md` y el builder lo copia (`pyproject` lo declara como `readme`; sin él, los metadatos del paquete quedaban vacíos); uvicorn con `--timeout-graceful-shutdown 20`; el uid de `useradd` es el de `USER`; la sonda solo es sana con `200`; el compose publica la API solo en `127.0.0.1`, con `restart: unless-stopped` y `stop_grace_period: 30s`; Redis sin snapshots ni AOF (la imagen declara `VOLUME /data` y guarda por defecto, lo que contradecía "efímero").
+- **GREEN:** `.dockerignore`, `Dockerfile`, `docker-compose.yml`; README con Compose ≥ 2.24, el puerto solo local, el reinicio y la parada.
+- **Comprobado con el daemon:** metadatos con el readme; API `healthy` en `127.0.0.1:8000`; Redis con `save` vacío y `appendonly no`; política `unless-stopped`; `/health` `200`.
+- **No aplicadas:** ruido de la sonda en los logs (spec-D4); fijar la imagen base por versión exacta y el lockfile (limitación documentada); fallar en vez de saltar los tests del compose sin el CLI (no hay CI que lo necesite todavía).

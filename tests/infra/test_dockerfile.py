@@ -84,6 +84,8 @@ def test_serves_the_app_with_one_worker_without_reload_nor_access_log() -> None:
     assert "--no-access-log" in argv
     assert "--reload" not in argv
     assert "--workers" not in argv  # one worker: the session pool is in memory (spec-D7)
+    # Time for in-flight Dia searches before the lifespan closes sessions (review T5).
+    assert argv[argv.index("--timeout-graceful-shutdown") + 1] == "20"
 
 
 def test_healthcheck_probes_health_on_ipv4_loopback_without_proxy() -> None:
@@ -92,6 +94,7 @@ def test_healthcheck_probes_health_on_ipv4_loopback_without_proxy() -> None:
     assert "127.0.0.1:8000/health" in healthcheck
     assert "trust_env=False" in healthcheck
     assert "curl" not in healthcheck
+    assert "status_code != 200" in healthcheck  # healthy only on a 200
 
 
 def test_logs_are_unbuffered() -> None:
@@ -105,3 +108,16 @@ def test_no_secrets_are_referenced() -> None:
 
     assert "API_KEYS" not in text
     assert ".env" not in text
+
+
+def test_the_user_created_is_the_one_that_runs() -> None:
+    [useradd] = [args for kw, args in after_last_from() if kw == "RUN" and "useradd" in args]
+    [user] = [args for kw, args in after_last_from() if kw == "USER"]
+
+    assert f"--uid {user}" in useradd
+
+
+def test_the_builder_copies_the_package_readme() -> None:
+    copies = [args for kw, args in instructions() if kw == "COPY" and "--from" not in args]
+
+    assert any("README.md" in args for args in copies)

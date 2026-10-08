@@ -31,9 +31,14 @@ docker compose down                # parar y borrar los contenedores
 
 - El compose pone `REDIS_URL` apuntando a su propio Redis, aunque el `.env` diga otra cosa, y
   arranca la API solo cuando Redis responde.
-- Puerto del host: `API_PORT` (por defecto `8000`). Redis no se publica fuera.
+- Necesita Docker Compose 2.24 o posterior (`docker compose version`): el `.env` es opcional en
+  el fichero, y esa sintaxis no existe en versiones anteriores.
+- Puerto del host: `API_PORT` (por defecto `8000`), solo en `127.0.0.1`: la API no queda abierta
+  al resto de la red. Redis no se publica fuera.
+- La API se reinicia sola si cae (`restart: unless-stopped`) y, al pararla, tiene hasta 30 s para
+  terminar las peticiones en curso y cerrar las sesiones de Dia y Redis.
 - Sin `.env`, la API termina al arrancar con el error de la variable que falta.
-- El Redis del compose es **efímero**: al reiniciar se pierden la cache, los códigos postales sin
+- El Redis del compose es **efímero** (sin snapshots ni AOF): al reiniciar se pierden la cache, los códigos postales sin
   servicio recordados, el enfriamiento y los límites. Las sesiones de Dia (en memoria) también.
 - **Un worker por contenedor**: las sesiones de Dia viven en la memoria del proceso. Para escalar,
   más contenedores sobre el mismo Redis (comparten límites y enfriamiento; cada uno paga sus

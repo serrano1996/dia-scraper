@@ -5,6 +5,8 @@
 *
 
 !pyproject.toml
+# pyproject declares it as the package readme (review T5).
+!README.md
 !app/
 
 # Readmitting app/ also readmits local bytecode: keep it out.

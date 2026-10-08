@@ -11,7 +11,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /build
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY app/ ./app/
 # Plain `.`, no [dev] extra: pytest, ruff, respx and fakeredis never get in.
 # No lockfile yet: versions within pyproject's bounds (plan-D2). The wheel
@@ -44,4 +44,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # sessions and Redis. One worker: the session pool lives in memory (spec-D7).
 # No access log: the request middleware already logs every request with its
 # request id, and uvicorn's would print the client's term unescaped (spec-D3).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+# 20 s for in-flight requests on shutdown, within compose's 30 s grace (review T5).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--timeout-graceful-shutdown", "20"]

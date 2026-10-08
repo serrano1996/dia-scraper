@@ -6,7 +6,8 @@ DOCKERIGNORE = Path(__file__).parents[2] / ".dockerignore"
 
 # Allowlist: anything not readmitted stays out of the build context, so a new
 # secret file (another .env, a credentials.json...) never reaches the image.
-READMITTED = {"pyproject.toml", "app/"}
+# README.md: pyproject declares it as the package readme (review T5).
+READMITTED = {"pyproject.toml", "README.md", "app/"}
 EXCLUDED_AGAIN = ["**/__pycache__/", "**/*.py[cod]"]
 
 

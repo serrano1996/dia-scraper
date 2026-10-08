@@ -14,7 +14,13 @@ services:
       # compose network, localhost is the api container itself (RF-8).
       REDIS_URL: redis://redis:6379/0
     ports:
-      - "${API_PORT:-8000}:8000"
+      # Loopback only: a development compose must not expose the API to the
+      # whole LAN (review T5). Behind a proxy, publish it on purpose.
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    # Back up after a crash; and time for in-flight Dia searches before SIGKILL,
+    # so the lifespan closes the sessions and Redis (review T5).
+    restart: unless-stopped
+    stop_grace_period: 30s
     depends_on:
       # Wait until Redis answers, not just until its container exists: a search
       # without Redis is a 500 (RF-9, spec-D2).
@@ -22,9 +28,12 @@ services:
         condition: service_healthy
 
   redis:
-    # Major version pinned, never `latest`. No volume: cache, cooldown and
-    # limits are ephemeral. No published port: only the api needs it (RF-10).
+    # Major version pinned, never `latest`. Ephemeral on purpose: the image
+    # declares VOLUME /data and snapshots by default, so persistence is turned
+    # off, or cache, cooldown and limits would survive `down`/`up` (review T5).
+    # No published port: only the api needs it (RF-10).
     image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

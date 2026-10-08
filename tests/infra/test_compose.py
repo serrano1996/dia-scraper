@@ -57,10 +57,13 @@ def test_api_waits_until_redis_is_healthy(config: dict) -> None:
     assert "ping" in services["redis"]["healthcheck"]["test"]
 
 
-def test_api_is_published_on_port_8000_by_default(config: dict) -> None:
-    ports = {(str(p["published"]), p["target"]) for p in config["services"]["api"]["ports"]}
+def test_api_is_published_on_port_8000_of_the_loopback_only_by_default(config: dict) -> None:
+    ports = {
+        (p.get("host_ip"), str(p["published"]), p["target"])
+        for p in config["services"]["api"]["ports"]
+    }
 
-    assert ports == {("8000", 8000)}
+    assert ports == {("127.0.0.1", "8000", 8000)}  # not the whole LAN (review T5)
 
 
 def test_env_file_is_loaded_but_cannot_override_the_redis_url(tmp_path: Path) -> None:
@@ -82,3 +85,18 @@ def test_no_secrets_are_written_in_the_file(config: dict) -> None:
 
 def test_redis_is_not_published_to_the_host(config: dict) -> None:
     assert "ports" not in config["services"]["redis"]
+
+
+def test_the_api_restarts_and_gets_time_to_shut_down(config: dict) -> None:
+    api = config["services"]["api"]
+
+    assert api["restart"] == "unless-stopped"
+    assert api["stop_grace_period"] == "30s"
+
+
+def test_redis_really_is_ephemeral(config: dict) -> None:
+    # The image declares VOLUME /data and saves snapshots by default (review T5).
+    command = " ".join(config["services"]["redis"]["command"])
+
+    assert '--save ""' in command or "--save ''" in command or "--save  " in command
+    assert "--appendonly no" in command
