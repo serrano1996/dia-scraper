@@ -85,6 +85,23 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **Ajustes al implementar (2026-10-08):** el test de integración se llama `test_logging_integration.py` (dos módulos `test_logging.py` sin `__init__.py` chocan en pytest); `tests/conftest.py` restaura el estado del logging tras cada test, porque el `lifespan` deja el nivel raíz en `INFO` y los tests posteriores capturaban líneas anteriores a su `caplog.at_level`; la comprobación de URLs busca `dia.test`, porque la línea de `httpx2` es la del cliente de test llamando a nuestra API, no a Dia.
 - **RF:** RF-1, RF-4, RF-17, RF-18
 
-### [ ] T12 — Docs vivas y verificación manual
+### [x] T12 — Docs vivas y verificación manual
 - **Hacer:** README (sección "Logs": `LOG_LEVEL`, formato, `X-Request-ID`, niveles por evento). Verificación manual: app real (con fakeredis si no hay Redis), 1 búsqueda real y 1 inválida; anotar las líneas observadas.
 - **RF:** RNF-6. **Fin de PR4.**
+
+#### Resultado de la verificación manual (2026-10-08)
+
+App real (`create_app()` + `lifespan` + `configure_logging`) contra `https://www.dia.es`, Redis sustituido por `FakeAsyncRedis` (sin Redis local), salida de `stderr` tal cual:
+
+```
+INFO app.middleware.request_context [f133be5b…] request started method=GET path='/api/v1/products' params={'postal_code': '08001', 'term': 'galletas', 'page_size': '5'}
+INFO app.services.postal_code_sessions [f133be5b…] dia session created postal_code='08001' reason=new
+INFO app.middleware.request_context [f133be5b…] request finished status=200 duration_ms=717.0
+INFO app.middleware.request_context [4813a996…] request started method=GET path='/api/v1/products' params={'postal_code': '2800', 'term': 'leche'}
+INFO app.middleware.request_context [4813a996…] request finished status=422 duration_ms=0.6
+```
+
+- Las líneas de cada petición comparten el request id, que coincide con su `X-Request-ID` (`f133be5b…` en el `200`, `4813a996…` en el `422`).
+- Ninguna línea de `httpx` con la URL de Dia (el `PUT` y la búsqueda no aparecen salvo en la creación de sesión).
+- Aparecen además líneas `INFO httpx2 [-] HTTP Request: GET http://testserver/…`: son del cliente de pruebas de Starlette llamando a nuestra API, no existen con `uvicorn` (que emite en su lugar su access log).
+- Los errores de Dia (reintentos, bloqueo, formato inesperado) se verifican solo con respx: provocarlos en real no es posible o arriesga la IP.

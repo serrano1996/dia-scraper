@@ -114,6 +114,39 @@ Cada enfriamiento y cada límite agotado deja un `WARNING` en el log. Los límit
 estimación prudente, no un umbral medido: Dia nunca bloqueó por ritmo en la investigación inicial.
 Ajústalos con esos avisos.
 
+## Logs
+
+Texto plano a `stderr`, una línea por evento:
+
+```
+2026-10-08 10:33:42,051 INFO app.middleware.request_context [b2db584eb44c493b8a9a8b73cba8b072] request started method=GET path='/api/v1/products' params={'postal_code': '28041', 'term': 'leche'}
+```
+
+- **Request id.** Cada petición recibe uno (32 caracteres hex) que acompaña a todas sus líneas,
+  de cualquier módulo, y se devuelve en la cabecera `X-Request-ID` (también en `404`, `422`,
+  `500` y `502`). El `X-Request-ID` que mande el cliente se ignora. Fuera de una petición vale `-`.
+- **Nivel** con `LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`, sin distinguir
+  mayúsculas). Un valor desconocido impide arrancar.
+
+| Evento | Nivel |
+|---|---|
+| Inicio y fin de cada petición (con código y duración) | `INFO` |
+| `404` (código postal sin servicio, página fuera de rango) | `INFO` |
+| Sesión de Dia creada o retirada, con su motivo | `INFO` |
+| Reintento | `WARNING` |
+| Enfriamiento activo o límite de salida agotado (`502` previsto) | `WARNING` |
+| Productos descartados por formato, cache corrupta, unidad desconocida, discrepancia de código postal | `WARNING` |
+| Bloqueo de Akamai (con la ruta y el estado del enfriamiento) | `ERROR` |
+| Reintentos agotados, `4xx` no reintentable, respuesta de Dia inesperada, `502` no previsto | `ERROR` |
+| **Todos** los productos de una respuesta descartados (probable cambio de formato en Dia) | `ERROR` |
+| Error no controlado (`500`, con traceback) | `ERROR` |
+
+Nunca se registran cookies (`session_id` ni las de Akamai), cabeceras completas, cuerpos de las
+respuestas de Dia ni URLs con parámetros: de las peticiones a Dia solo consta la ruta. Los valores
+que manda el cliente aparecen escapados (`%r`), así que un salto de línea no puede fabricar una
+línea falsa. El access log de uvicorn sigue emitiendo su propia línea por petición, sin request
+id; si sobra, `uvicorn app.main:app --no-access-log`.
+
 ## Configuración
 
 Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
@@ -126,7 +159,7 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
 | `RETRY_MAX_ATTEMPTS` | `3` | intentos en total ante `5xx`, `429` o errores de red |
 | `RETRY_BASE_DELAY` | `0.5` | espera base entre intentos (backoff exponencial) |
 | `HTTP_TIMEOUT_SECONDS` | `10` | timeout de cada petición a Dia |
-| `LOG_LEVEL` | `INFO` | nivel de log |
+| `LOG_LEVEL` | `INFO` | nivel de log (ver [Logs](#logs)) |
 | `SESSION_MAX_AGE_SECONDS` | `3000` | una sesión de Dia se renueva pasado este tiempo desde su creación (la cookie de Dia dura 1 h) |
 | `MAX_SESSIONS` | `100` | sesiones de Dia abiertas a la vez; al superarlo se descarta la usada hace más tiempo |
 | `POSTAL_CODE_NEGATIVE_CACHE_TTL_SECONDS` | `86400` | cuánto se recuerda que Dia no da servicio en un código postal |
