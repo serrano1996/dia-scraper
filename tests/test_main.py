@@ -18,6 +18,7 @@ from app.services.postal_code_sessions import PostalCodeSessions
 def environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DIA_BASE_URL", "https://dia.test")
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("API_KEYS", "synthetic-main-token")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -106,7 +107,11 @@ def test_during_a_cooldown_neither_puts_nor_searches_reach_dia(
         client.portal.call(lambda: redis.set(COOLDOWN_KEY, "1", ex=300))
         with pytest.raises(CooldownActiveError):
             client.portal.call(resources(app).sessions.get, "08001")
-        response = client.get("/api/v1/products", params={"postal_code": "28041", "term": "pan"})
+        response = client.get(
+            "/api/v1/products",
+            params={"postal_code": "28041", "term": "pan"},
+            headers={"X-API-Key": "synthetic-main-token"},
+        )
 
     assert response.status_code == 502
     assert put.call_count == search.call_count == 0

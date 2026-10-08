@@ -2,12 +2,15 @@
 
 from typing import Annotated, Protocol
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Security
 
 from app.core.dependencies import get_product_service
+from app.core.security import require_api_key
 from app.models.product import ProductQuery, ProductSearchResponse
 
-router = APIRouter(prefix="/api/v1", tags=["products"])
+# Every /api/v1 endpoint requires X-API-Key; anything outside the router
+# (/health, /docs, /openapi.json) stays public (spec 005 RF-1, RF-6, plan-D4).
+router = APIRouter(prefix="/api/v1", tags=["products"], dependencies=[Security(require_api_key)])
 
 
 class ProductServiceLike(Protocol):

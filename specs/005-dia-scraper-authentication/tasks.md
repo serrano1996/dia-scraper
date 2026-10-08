@@ -27,15 +27,16 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 - **GREEN:** `app/core/security.py` (plan-D2).
 - **RF:** RF-4, RF-5
 
-### [ ] T3 — `require_api_key` en el router
+### [x] T3 — `require_api_key` en el router
 - **RED:** `test_products_route.py`, con la app real y su `lifespan` (fakeredis): sin cabecera, vacía e inválida → `401 {"detail": "Invalid or missing API key"}` y `WWW-Authenticate: ApiKey`; token inválido y `postal_code` inválido → `401`, no `422`; token válido → llega al servicio. Los tests de ruta existentes pasan a sustituir `require_api_key` (plan-D7).
 - **GREEN:** `require_api_key` y `dependencies=[Security(require_api_key)]` en el router (plan-D3, D4, D5).
 - **RF:** RF-1, RF-2, RF-3, RF-7
 
-### [ ] T4 — Tests existentes con token
+### [x] T4 — Tests existentes con token
 - **RED:** con T3 hecho, los tests de integración y `test_main.py` que llaman a `/api/v1` fallan con `401`.
 - **GREEN:** el harness de integración fija `API_KEYS` sintético y la cabecera por defecto; `test_main.py` igual (plan-D7). Sin cambios en `app/`.
 - **RF:** — **Fin de PR1.**
+- **Cambio al implementar (2026-10-08):** se hace en el mismo commit que T3. Con la dependencia en el router, 34 tests de integración y de `test_main.py` daban `401`; separarlo dejaba un commit con la suite en rojo, contra la regla de cierre de cada tarea.
 
 ---
 

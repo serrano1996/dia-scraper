@@ -15,6 +15,8 @@ from app.main import create_app
 from app.services.cooldown import COOLDOWN_KEY
 from tests.fixture_data import load_fixture
 from tests.integration.conftest import (
+    API_TOKEN,
+    AUTH_HEADERS,
     DIA_BASE_URL,
     SEARCH_URL,
     mock_dia_put,
@@ -43,6 +45,7 @@ def start(monkeypatch: pytest.MonkeyPatch, redis: FakeAsyncRedis) -> Iterator:
     """Start app instances sharing one fakeredis, as instances share Redis in production."""
     monkeypatch.setenv("DIA_BASE_URL", DIA_BASE_URL)
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("API_KEYS", API_TOKEN)
     monkeypatch.setenv("RETRY_BASE_DELAY", "0")
     monkeypatch.setenv("RETRY_JITTER_MAX_S", "0")
     monkeypatch.setattr(main_module, "create_redis", lambda _settings: redis)
@@ -52,7 +55,7 @@ def start(monkeypatch: pytest.MonkeyPatch, redis: FakeAsyncRedis) -> Iterator:
         for name, value in env.items():
             monkeypatch.setenv(name, value)
         get_settings.cache_clear()
-        return stack.enter_context(TestClient(create_app()))
+        return stack.enter_context(TestClient(create_app(), headers=AUTH_HEADERS))
 
     with stack:
         yield _start

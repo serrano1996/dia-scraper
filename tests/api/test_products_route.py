@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.dependencies import get_product_service
+from app.core.security import require_api_key
 from app.exceptions import (
     CooldownActiveError,
     OutboundRateLimitedError,
@@ -60,8 +61,10 @@ class FakeService:
 
 def client_with(service: FakeService) -> TestClient:
     # Without `with`, TestClient does not run the lifespan: no Redis, no Dia.
+    # Authentication is covered in test_auth_route.py; here it is let through.
     app = create_app()
     app.dependency_overrides[get_product_service] = lambda: service
+    app.dependency_overrides[require_api_key] = lambda: None
     return TestClient(app)
 
 

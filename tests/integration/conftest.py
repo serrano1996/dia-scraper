@@ -20,6 +20,9 @@ from app.main import create_app
 
 DIA_BASE_URL = "https://dia.test"
 SEARCH_URL = f"{DIA_BASE_URL}/api/v1/search-back/search/reduced"
+# Synthetic token (constitution #12); every harness request sends it (spec 005 plan-D7).
+API_TOKEN = "synthetic-integration-token-0123456789"
+AUTH_HEADERS = {"X-API-Key": API_TOKEN}
 PUT_URL = f"{DIA_BASE_URL}/api/v1/common-aggregator/save-shipping-address"
 
 
@@ -43,13 +46,14 @@ class Harness:
 def harness(monkeypatch: pytest.MonkeyPatch) -> Iterator[Harness]:
     monkeypatch.setenv("DIA_BASE_URL", DIA_BASE_URL)
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("API_KEYS", API_TOKEN)
     monkeypatch.setenv("RETRY_BASE_DELAY", "0")
     monkeypatch.setenv("RETRY_JITTER_MAX_S", "0")
     get_settings.cache_clear()
     redis = FakeAsyncRedis()
     monkeypatch.setattr(main_module, "create_redis", lambda _settings: redis)
 
-    with TestClient(create_app()) as client:
+    with TestClient(create_app(), headers=AUTH_HEADERS) as client:
         yield Harness(client=client, redis=redis)
     get_settings.cache_clear()
 
