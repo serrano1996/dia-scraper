@@ -31,7 +31,7 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 - **Nota:** `BrokenRedis` lanza al acceder al comando (como el doble de Alcampo), no desde una corrutina: cubre igual comandos y `pipeline()`, porque el circuito llama a la operación dentro de su `try`.
 - **RF:** RF-4, RF-5
 
-### [ ] T4 — Enfriamiento sin Redis
+### [x] T4 — Enfriamiento sin Redis
 - **RED:** `test_cooldown.py`: sin Redis, `activate` arranca uno local (`True`, luego `False`) y `is_active` lo ve hasta que vence; uno local sigue activo con Redis de vuelta y sin clave; con Redis sano, igual que hoy (plan-D5).
 - **GREEN:** `LocalCooldown` y el respaldo en `cooldown.py`.
 - **RF:** RF-6, RF-8
