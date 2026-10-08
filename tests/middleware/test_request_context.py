@@ -5,6 +5,7 @@ import pytest
 from fastapi import FastAPI, Query
 from fastapi.testclient import TestClient
 
+from app.core.logging import install_request_id_factory
 from app.middleware.request_context import REQUEST_ID_HEADER, RequestContextMiddleware
 
 LOGGER = "app.middleware.request_context"
@@ -104,6 +105,8 @@ def test_client_values_are_escaped_so_they_cannot_forge_lines(
 
 
 def test_outside_a_request_the_id_is_a_dash(caplog: pytest.LogCaptureFixture) -> None:
+    install_request_id_factory()  # what the middleware (or configure_logging) does
+
     with caplog.at_level(logging.INFO):
         logging.getLogger("x").info("startup")
 

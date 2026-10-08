@@ -127,3 +127,18 @@ def test_the_pool_limits_new_sessions(
             client.portal.call(resources(app).sessions.get, "41001")
 
     assert put.call_count == 1
+
+
+# --- Logging (spec 004 RF-1, T11) ---
+
+
+def test_the_lifespan_configures_logging_with_log_level(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOG_LEVEL", "debug")
+    calls: list[str] = []
+    monkeypatch.setattr(main, "configure_logging", lambda level: calls.append(level))
+    app = app_with(monkeypatch, FakeAsyncRedis())
+
+    with TestClient(app):
+        pass
+
+    assert calls == ["DEBUG"]

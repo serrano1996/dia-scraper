@@ -1,7 +1,6 @@
 import io
 import logging
 import re
-from collections.abc import Iterator
 
 import httpx
 import pytest
@@ -14,20 +13,6 @@ LINE = re.compile(
     r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} (?P<level>[A-Z]+) (?P<logger>\S+) "
     r"\[(?P<request_id>[^\]]+)\] (?P<message>.*)$"
 )
-
-
-@pytest.fixture(autouse=True)
-def restore_logging_state() -> Iterator[None]:
-    """`configure_logging` mutates process-wide state: undo it after each test (plan R1)."""
-    root = logging.getLogger()
-    handlers, level = list(root.handlers), root.level
-    factory = logging.getLogRecordFactory()
-    httpx_level = logging.getLogger("httpx").level
-    yield
-    root.handlers[:] = handlers
-    root.setLevel(level)
-    logging.setLogRecordFactory(factory)
-    logging.getLogger("httpx").setLevel(httpx_level)
 
 
 def lines(buffer: io.StringIO) -> list[str]:

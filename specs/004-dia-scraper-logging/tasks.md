@@ -79,9 +79,10 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 
 ## PR4 — Cableado, integración y docs
 
-### [ ] T11 — `lifespan` e integración
+### [x] T11 — `lifespan` e integración
 - **RED:** `test_main.py`: el `lifespan` llama a `configure_logging` con `LOG_LEVEL`. `tests/integration/test_logging.py`: una búsqueda que reintenta y acaba en `502` → todas sus líneas con el id de `X-Request-ID`; una respuesta de Dia con `Set-Cookie: session_id=<sintético>` → ningún registro contiene el valor; `term` con `\n` → ninguna línea partida; ningún registro de `httpx` en `INFO`.
 - **GREEN:** `main.py` (`configure_logging` en el `lifespan`).
+- **Ajustes al implementar (2026-10-08):** el test de integración se llama `test_logging_integration.py` (dos módulos `test_logging.py` sin `__init__.py` chocan en pytest); `tests/conftest.py` restaura el estado del logging tras cada test, porque el `lifespan` deja el nivel raíz en `INFO` y los tests posteriores capturaban líneas anteriores a su `caplog.at_level`; la comprobación de URLs busca `dia.test`, porque la línea de `httpx2` es la del cliente de test llamando a nuestra API, no a Dia.
 - **RF:** RF-1, RF-4, RF-17, RF-18
 
 ### [ ] T12 — Docs vivas y verificación manual

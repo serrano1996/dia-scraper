@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.products import router as products_router
 from app.core.config import Settings, get_settings
+from app.core.logging import configure_logging
 from app.core.state import AppResources
 from app.exceptions import (
     PageOutOfRangeError,
@@ -37,6 +38,8 @@ def create_redis(settings: Settings) -> redis.Redis:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """One HTTP client and one Redis client per process, closed on shutdown (RNF-1)."""
     settings = get_settings()
+    # First, so everything below logs with the format and level (spec 004 RF-1).
+    configure_logging(settings.log_level)
     async with AsyncExitStack() as stack:
         # Each client is closed even if building the next one fails.
         redis_client = create_redis(settings)
