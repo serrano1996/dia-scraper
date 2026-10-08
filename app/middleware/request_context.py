@@ -21,6 +21,12 @@ REQUEST_ID_HEADER = "X-Request-ID"
 # Longest query logged on the start line: a huge one must not bloat the logs (review T13).
 MAX_PARAMS_LOGGED = 500
 
+# Query params whose value is hidden on the start line, matched by name and
+# case-insensitively: a client sending its key in the URL by mistake must not
+# leak it into our logs (spec 005 RF-15, plan-D6). Values are never inspected.
+SECRET_PARAM_NAMES = frozenset({"api_key", "apikey", "x-api-key", "key", "token"})
+REDACTED = "***"
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,7 +95,14 @@ class RequestContextMiddleware:
 
 def _params_for_log(query_string: bytes) -> str:
     """Every parameter, repeated ones included, through repr and capped (RF-17)."""
-    text = repr(QueryParams(query_string).multi_items())
+    text = repr(redact_params(QueryParams(query_string).multi_items()))
     if len(text) > MAX_PARAMS_LOGGED:
         return f"{text[:MAX_PARAMS_LOGGED]}...(truncated, {len(text)} chars)"
     return text
+
+
+def redact_params(params: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """`params` with the values of secret-named params replaced by `***`, order kept."""
+    return [
+        (name, REDACTED if name.lower() in SECRET_PARAM_NAMES else value) for name, value in params
+    ]

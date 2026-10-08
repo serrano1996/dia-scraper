@@ -47,7 +47,7 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 - **GREEN:** log en `require_api_key`; `WARNING` en el `lifespan`.
 - **RF:** RF-9, RF-10, RF-12
 
-### [ ] T6 — Ocultar parámetros con nombre de secreto
+### [x] T6 — Ocultar parámetros con nombre de secreto
 - **RED:** `test_request_context.py`: `?api_key=x&Token=y&KEY=z&term=token` → los tres primeros como `'***'` y `term` intacto; el valor real no aparece en ningún registro.
 - **GREEN:** `redact_params` en el middleware, antes del `repr` y del tope (plan-D6).
 - **RF:** RF-15

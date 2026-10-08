@@ -6,7 +6,11 @@ from fastapi import FastAPI, Query
 from fastapi.testclient import TestClient
 
 from app.core.logging import install_request_id_factory
-from app.middleware.request_context import REQUEST_ID_HEADER, RequestContextMiddleware
+from app.middleware.request_context import (
+    REQUEST_ID_HEADER,
+    RequestContextMiddleware,
+    redact_params,
+)
 
 LOGGER = "app.middleware.request_context"
 
@@ -161,3 +165,31 @@ def test_repeated_params_are_all_logged(
     start = messages(caplog)[0].getMessage()
     assert "first" in start
     assert "second" in start
+
+
+# --- Secret-named params are hidden (spec 005 RF-15, T6) ---
+
+
+def test_secret_named_params_are_hidden_by_name_whatever_the_case(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.INFO):
+        client.get(
+            "/ok?api_key=secret-a&Token=secret-b&KEY=secret-c&x-api-key=secret-d&apikey=secret-e&term=token"
+        )
+
+    start = messages(caplog)[0].getMessage()
+    # Our lines only: the test client (httpx2) logs the URL it requested itself.
+    ours = " ".join(r.getMessage() for r in caplog.records if r.name.startswith("app."))
+    for value in ("secret-a", "secret-b", "secret-c", "secret-d", "secret-e"):
+        assert value not in ours
+    assert start.count("'***'") == 5
+    assert "('term', 'token')" in start  # judged by name, never by value
+
+
+def test_redact_params_keeps_order_and_repeated_names() -> None:
+    assert redact_params([("term", "a"), ("token", "s"), ("term", "b")]) == [
+        ("term", "a"),
+        ("token", "***"),
+        ("term", "b"),
+    ]
