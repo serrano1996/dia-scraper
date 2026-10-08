@@ -23,6 +23,8 @@ OPTIONAL = [
     "NEW_SESSION_WINDOW_SECONDS",
     "RETRY_JITTER_MAX_S",
     "API_KEYS",
+    "REDIS_TIMEOUT_SECONDS",
+    "REDIS_CIRCUIT_OPEN_SECONDS",
 ]
 
 
@@ -72,6 +74,9 @@ def test_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.new_session_limit == 10
     assert settings.new_session_window_seconds == 600
     assert settings.retry_jitter_max_s == 0.3
+    # Spec 008: Redis degradation (spec-D1, spec-D2).
+    assert settings.redis_timeout_seconds == 2
+    assert settings.redis_circuit_open_seconds == 10
 
 
 def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -109,6 +114,7 @@ def test_environment_overrides_defaults(monkeypatch: pytest.MonkeyPatch) -> None
         "AKAMAI_COOLDOWN_SECONDS",
         "DIA_RATE_WINDOW_SECONDS",
         "NEW_SESSION_WINDOW_SECONDS",
+        "REDIS_TIMEOUT_SECONDS",
     ],
 )
 def test_non_positive_values_fail(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
@@ -144,6 +150,7 @@ def test_get_settings_returns_the_same_instance(monkeypatch: pytest.MonkeyPatch)
         ("DIA_RATE_LIMIT", "dia_rate_limit"),
         ("NEW_SESSION_LIMIT", "new_session_limit"),
         ("RETRY_JITTER_MAX_S", "retry_jitter_max_s"),
+        ("REDIS_CIRCUIT_OPEN_SECONDS", "redis_circuit_open_seconds"),
     ],
 )
 def test_zero_disables_but_negative_fails(
@@ -175,6 +182,16 @@ def test_the_environment_overrides_the_anti_ban_settings(monkeypatch: pytest.Mon
     assert (settings.akamai_cooldown_seconds, settings.dia_rate_limit) == (120, 5)
     assert (settings.dia_rate_window_seconds, settings.new_session_limit) == (10, 2)
     assert (settings.new_session_window_seconds, settings.retry_jitter_max_s) == (30, 0.1)
+
+
+def test_the_environment_overrides_the_redis_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    set_required(monkeypatch)
+    monkeypatch.setenv("REDIS_TIMEOUT_SECONDS", "0.5")
+    monkeypatch.setenv("REDIS_CIRCUIT_OPEN_SECONDS", "30")
+
+    settings = Settings(_env_file=None)
+
+    assert (settings.redis_timeout_seconds, settings.redis_circuit_open_seconds) == (0.5, 30)
 
 
 # --- LOG_LEVEL (spec 004 RF-2, T1) ---

@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     new_session_window_seconds: int = Field(default=600, gt=0)
     # Random extra wait, up to this many seconds, added to every retry. 0 = none.
     retry_jitter_max_s: float = Field(default=0.3, ge=0)
+    # Redis degradation (spec 008). Connecting and each operation give up after
+    # this long, so a hung Redis costs one timeout, not an endless wait (RF-1).
+    redis_timeout_seconds: float = Field(default=2, gt=0)
+    # After a Redis failure, skip Redis for this long and use the fallbacks
+    # straight away (RF-2). 0 disables the circuit: every operation tries Redis.
+    redis_circuit_open_seconds: int = Field(default=10, ge=0)
     # Tokens accepted in X-API-Key (spec 005), comma-separated in the environment.
     # `NoDecode` stops pydantic-settings from reading it as JSON ("a,b" would fail)
     # and `repr=False` keeps the tokens out of any printed or logged Settings

@@ -1,11 +1,16 @@
+import socket
+import time
+from collections.abc import Iterator
+
 import httpx
 import pytest
 import respx
 from fakeredis import FakeAsyncRedis
 from fastapi.testclient import TestClient
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 import app.main as main
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.state import AppResources, resources
 from app.exceptions import CooldownActiveError, OutboundRateLimitedError
 from app.main import create_app
@@ -147,3 +152,47 @@ def test_the_lifespan_configures_logging_with_log_level(monkeypatch: pytest.Monk
         pass
 
     assert calls == ["DEBUG"]
+
+
+# --- Redis timeouts (spec 008 RF-1, plan-D1) ---
+
+
+def test_create_redis_bounds_connecting_and_every_operation() -> None:
+    settings = Settings(_env_file=None, redis_timeout_seconds=1.5)
+
+    client = main.create_redis(settings)
+
+    kwargs = client.connection_pool.connection_kwargs
+    assert (kwargs["socket_connect_timeout"], kwargs["socket_timeout"]) == (1.5, 1.5)
+
+
+@pytest.fixture
+def silent_redis_port() -> Iterator[int]:
+    """A port that completes the TCP handshake and never answers: a hung Redis.
+
+    The kernel accepts connections into the backlog without `accept()`, so the
+    client connects and then waits for a reply that never comes.
+    """
+    with socket.socket() as server:
+        server.bind(("127.0.0.1", 0))
+        server.listen(8)
+        yield server.getsockname()[1]
+
+
+async def test_a_hung_redis_fails_after_the_timeout_not_later(silent_redis_port: int) -> None:
+    # No retries hidden in the client: one operation costs one timeout (plan-D1).
+    settings = Settings(
+        _env_file=None,
+        redis_url=f"redis://127.0.0.1:{silent_redis_port}/0",
+        redis_timeout_seconds=0.3,
+    )
+    client = main.create_redis(settings)
+    started = time.perf_counter()
+
+    try:
+        with pytest.raises(RedisTimeoutError):
+            await client.ping()
+    finally:
+        await client.aclose()
+
+    assert time.perf_counter() - started < 0.3 * 3

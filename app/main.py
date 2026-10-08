@@ -31,8 +31,17 @@ logger = logging.getLogger(__name__)
 
 
 def create_redis(settings: Settings) -> redis.Redis:
-    """The process-wide Redis client. Building it does not connect yet."""
-    return redis.from_url(settings.redis_url)
+    """The process-wide Redis client. Building it does not connect yet.
+
+    Connecting and every operation are bounded by `REDIS_TIMEOUT_SECONDS`, and the
+    client retries nothing on its own, so one operation costs at most one timeout
+    (spec 008 RF-1, plan-D1).
+    """
+    return redis.from_url(
+        settings.redis_url,
+        socket_connect_timeout=settings.redis_timeout_seconds,
+        socket_timeout=settings.redis_timeout_seconds,
+    )
 
 
 @asynccontextmanager
