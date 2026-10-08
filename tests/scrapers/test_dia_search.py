@@ -166,3 +166,24 @@ async def test_an_akamai_block_on_a_search_is_reported_to_the_gate() -> None:
         await client.aclose()
 
     assert (gate.admitted, gate.blocks) == (1, 1)
+
+
+# --- Logs carry the path, never the term (spec 004 spec-D5, T5) ---
+
+
+@respx.mock
+async def test_retry_lines_name_the_path_without_the_term(caplog) -> None:
+    respx.get(SEARCH_URL).mock(
+        side_effect=[
+            httpx.Response(503),
+            httpx.Response(200, json=load_fixture("dia_search_leche.json")),
+        ]
+    )
+
+    with caplog.at_level("INFO"):
+        await search("leche secreta")
+
+    # Our own lines; httpx's are silenced by configure_logging (tests/core/test_logging.py).
+    lines = [r.getMessage() for r in caplog.records if r.name.startswith("app.")]
+    assert any(f"path={SEARCH_PATH}" in line for line in lines)
+    assert not any("secreta" in line or "q=" in line for line in lines)

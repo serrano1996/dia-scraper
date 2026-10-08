@@ -41,7 +41,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** `exceptions.py`, `main.py` (middleware y logs en handlers).
 - **RF:** RF-5, RF-7, RF-8
 
-### [ ] T5 — Logs de reintentos
+### [x] T5 — Logs de reintentos
 - **RED:** `test_retry.py` con `caplog`: `503, 503, 200` → 2 `WARNING` con `path`, intento, motivo y espera; agotados → 1 `ERROR`; `404` → 1 `ERROR`; una línea nunca contiene `q=` (la ruta llega sin parámetros).
 - **GREEN:** `send_with_retry(..., path=…)`; el scraper y la sesión pasan su ruta (plan-D7).
 - **RF:** RF-9, RF-10

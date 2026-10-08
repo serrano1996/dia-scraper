@@ -5,6 +5,7 @@ injectable `sleep`, so tests never wait for real time (plan-D6).
 """
 
 import asyncio
+import logging
 import random
 import re
 from collections.abc import Awaitable, Callable
@@ -19,6 +20,8 @@ from app.exceptions import UpstreamBlockedError, UpstreamUnavailableError
 Sleep = Callable[[float], Awaitable[None]]
 Uniform = Callable[[float, float], float]
 Now = Callable[[], datetime]
+
+logger = logging.getLogger(__name__)
 
 
 class Gate(Protocol):
@@ -102,6 +105,7 @@ async def send_with_retry(
     uniform: Uniform = random.uniform,
     now: Now = _utc_now,
     gate: Gate | None = None,
+    path: str = "-",
 ) -> httpx.Response:
     """Call `send`, retrying transient failures with exponential backoff.
 
@@ -119,6 +123,10 @@ async def send_with_retry(
     - With a `gate`, `gate.admit()` runs before every attempt, retries included,
       and may refuse it (cooldown, outbound limit); an Akamai block calls
       `gate.blocked()` before raising (spec 003 RF-1, RF-4).
+    - Logs (spec 004 RF-9, RF-10): a WARNING before each retry, an ERROR when
+      the attempts run out or a 4xx is not retryable. `path` is the request path
+      given by the caller, never the URL: its parameters carry the client's term
+      and postal code (spec-D5, plan-D7).
     - Exhausting the attempts raises `UpstreamUnavailableError` (RF-20), chained
       to the last transport error, if any: no httpx type leaves the scrapers (RF-22).
     """
@@ -144,6 +152,9 @@ async def send_with_retry(
                 if gate is not None:
                     await gate.blocked()
                 raise
+            except UpstreamUnavailableError:
+                logger.error("non-retryable upstream status=%d path=%s", response.status_code, path)
+                raise
             if not _is_retryable(response):
                 return response
             reason = f"status {response.status_code}"
@@ -151,7 +162,12 @@ async def send_with_retry(
             asked_wait = _retry_after(response, now())
         if attempt < max_attempts:
             wait = base_delay * 2 ** (attempt - 1) if asked_wait is None else asked_wait
-            await sleep(wait + uniform(0, jitter_max))
+            wait += uniform(0, jitter_max)
+            logger.warning(
+                "retrying path=%s attempt=%d reason=%r wait_s=%.2f", path, attempt, reason, wait
+            )
+            await sleep(wait)
+    logger.error("retries exhausted path=%s attempts=%d reason=%r", path, max_attempts, reason)
     raise UpstreamUnavailableError(
         f"retries exhausted after {max_attempts} attempts ({reason})"
     ) from last_error

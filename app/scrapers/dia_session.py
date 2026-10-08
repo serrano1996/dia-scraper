@@ -67,6 +67,7 @@ class DiaSession:
             sleep=self._sleep,
             jitter_max=self._jitter_max,
             gate=self._gate,
+            path=SAVE_SHIPPING_ADDRESS_PATH,
         )
         if response.status_code == 204:
             self._postal_code = postal_code

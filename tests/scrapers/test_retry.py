@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
@@ -346,3 +347,65 @@ async def test_other_failures_do_not_tell_the_gate_about_a_block() -> None:
         await send_with_retry(send, max_attempts=3, base_delay=0, sleep=FakeSleep(), gate=gate)
 
     assert gate.blocks == 0
+
+
+# --- Logs (spec 004 RF-9, RF-10, T5) ---
+
+RETRY_LOGGER = "app.scrapers.retry"
+
+
+def retry_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [r for r in caplog.records if r.name == RETRY_LOGGER]
+
+
+async def test_each_retry_is_a_warning_with_path_attempt_reason_and_wait(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    send = FakeSend(response(503), response(503), response(200))
+
+    with caplog.at_level(logging.INFO, logger=RETRY_LOGGER):
+        await send_with_retry(send, max_attempts=3, base_delay=0.5, sleep=FakeSleep(), path="/x")
+
+    first, second = retry_records(caplog)
+    assert first.levelno == second.levelno == logging.WARNING
+    assert "path=/x" in first.getMessage()
+    assert "attempt=1" in first.getMessage()
+    assert "reason='status 503'" in first.getMessage()
+    assert "wait_s=0.50" in first.getMessage()
+    assert "attempt=2" in second.getMessage()
+
+
+async def test_exhausted_retries_are_one_error(caplog: pytest.LogCaptureFixture) -> None:
+    send = FakeSend(response(503), response(503), response(503))
+
+    with (
+        caplog.at_level(logging.INFO, logger=RETRY_LOGGER),
+        pytest.raises(UpstreamUnavailableError),
+    ):
+        await send_with_retry(send, max_attempts=3, base_delay=0, sleep=FakeSleep(), path="/x")
+
+    errors = [r for r in retry_records(caplog) if r.levelno == logging.ERROR]
+    assert len(errors) == 1
+    assert "attempts=3" in errors[0].getMessage()
+    assert "path=/x" in errors[0].getMessage()
+
+
+async def test_a_non_retryable_status_is_one_error(caplog: pytest.LogCaptureFixture) -> None:
+    with (
+        caplog.at_level(logging.INFO, logger=RETRY_LOGGER),
+        pytest.raises(UpstreamUnavailableError),
+    ):
+        await send_with_retry(
+            FakeSend(response(404)), max_attempts=3, base_delay=0, sleep=FakeSleep(), path="/x"
+        )
+
+    [error] = retry_records(caplog)
+    assert error.levelno == logging.ERROR
+    assert "status=404" in error.getMessage()
+
+
+async def test_a_success_at_once_logs_nothing(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.INFO, logger=RETRY_LOGGER):
+        await send_with_retry(FakeSend(response(200)), max_attempts=3, base_delay=0, path="/x")
+
+    assert retry_records(caplog) == []

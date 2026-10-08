@@ -207,3 +207,17 @@ async def test_an_akamai_block_on_a_put_is_reported_to_the_gate() -> None:
         await session.aclose()
 
     assert (gate.admitted, gate.blocks) == (1, 1)
+
+
+# --- Logs carry the path (spec 004, T5) ---
+
+
+@respx.mock
+async def test_retry_lines_name_the_put_path(caplog) -> None:
+    respx.put(PUT_URL).mock(side_effect=[httpx.Response(503), httpx.Response(204)])
+
+    with caplog.at_level("INFO"):
+        session = await set_postal_code("08001")
+        await session.aclose()
+
+    assert any(f"path={SAVE_SHIPPING_ADDRESS_PATH}" in r.getMessage() for r in caplog.records)

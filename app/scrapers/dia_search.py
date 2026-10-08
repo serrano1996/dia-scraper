@@ -48,6 +48,7 @@ class DiaSearchScraper:
             sleep=self._sleep,
             jitter_max=self._jitter_max,
             gate=self._gate,
+            path=SEARCH_PATH,
         )
         try:
             return DiaSearchResponse.model_validate_json(response.content)
