@@ -1,0 +1,52 @@
+# Spec 007: the checks that close every task, on every push and pull request.
+# Nothing is published and nothing is written (RF-7). Python 3.11 is the minimum
+# declared in pyproject.toml, so the code is proved on it (local development
+# uses newer). No secrets: the tests never call Dia nor a real Redis (RF-10).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    # Fixed: no silent jump to the next Ubuntu (RF-8).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          # The cache follows the lock, not the default requirements*.txt (plan-D5).
+          cache-dependency-path: requirements-dev.lock
+
+      # The pinned dev dependencies with hashes, the package alone, and
+      # `pip check` fails if pyproject.toml declares something the lock lacks
+      # (regenerate it with scripts/lock.sh) (RF-5, plan-D4).
+      - name: Install
+        run: |
+          pip install --require-hashes -r requirements-dev.lock
+          pip install --no-deps -e .
+          pip check
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format
+        run: ruff format --check .
+
+      - name: Types
+        run: mypy
+
+      # respx and fakeredis: never Dia nor a real Redis. The compose tests use
+      # the docker CLI, which the runner has (RF-9).
+      - name: Tests
+        run: pytest -q
+
+      - name: Docker image
+        run: docker build -t dia-scraper:ci .

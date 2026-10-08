@@ -25,7 +25,7 @@ Formato de commit: `<tipo>(007-dia-scraper-ci-and-lockfile): <descripción en in
 - **GREEN:** `Dockerfile` (plan-D3) y `.dockerignore`. Comprobar con el daemon que `docker build` funciona.
 - **RF:** RF-4
 
-### [ ] T3 — CI
+### [x] T3 — CI
 - **RED:** `tests/infra/test_ci_workflow.py` falla: no hay workflow.
 - **GREEN:** `.github/workflows/ci.yml` (plan-D4, D5).
 - **RF:** RF-5…RF-10
