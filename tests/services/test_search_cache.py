@@ -1,10 +1,13 @@
+import logging
 from datetime import UTC, datetime
 
 import pytest
 from fakeredis import FakeAsyncRedis
 
 from app.models.product import Product, ProductSearchResponse, SearchMetadata
+from app.services.redis_circuit import RedisCircuitBreaker
 from app.services.search_cache import SearchCacheRepository, cache_key
+from tests.redis_doubles import DOWN, HUNG, BrokenRedis, CountingBrokenRedis
 
 
 def make_response(term: str = "leche") -> ProductSearchResponse:
@@ -111,3 +114,40 @@ async def test_a_plain_miss_logs_nothing(
         assert await cache.get(**KEY) is None
 
     assert not [r for r in caplog.records if r.name == "app.services.search_cache"]
+
+
+# --- Without Redis (spec 008 RF-4, plan-D4) ---
+
+
+@pytest.mark.parametrize("error", [DOWN, HUNG], ids=["down", "hung"])
+async def test_without_redis_a_read_is_a_miss_and_a_write_is_skipped(
+    error: Exception, caplog: pytest.LogCaptureFixture
+) -> None:
+    cache = SearchCacheRepository(BrokenRedis(error), circuit=RedisCircuitBreaker(open_seconds=10))
+    caplog.set_level(logging.DEBUG)
+
+    assert await cache.get(postal_code="28001", term="leche", page=1, page_size=50) is None
+    await cache.set(
+        postal_code="28001",
+        term="leche",
+        page=1,
+        page_size=50,
+        response=make_response(),
+        ttl_seconds=60,
+    )
+
+    fallbacks = [r for r in caplog.records if r.name == "app.services.search_cache"]
+    assert [(r.levelno, r.getMessage()) for r in fallbacks] == [
+        (logging.DEBUG, "redis unavailable op=search_cache.get"),
+        (logging.DEBUG, "redis unavailable op=search_cache.set"),
+    ]
+
+
+async def test_with_the_circuit_open_the_cache_does_not_touch_redis() -> None:
+    redis = CountingBrokenRedis(DOWN)
+    cache = SearchCacheRepository(redis, circuit=RedisCircuitBreaker(open_seconds=10))
+
+    for _ in range(2):
+        await cache.get(postal_code="28001", term="leche", page=1, page_size=50)
+
+    assert redis.attempts == 1

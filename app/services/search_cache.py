@@ -2,13 +2,18 @@
 
 One entry per requested postal code, term, page and page size (spec 002
 RF-11): Dia exposes no store to group postal codes by.
+
+Without Redis a read is a miss and a write is skipped: the search is served from
+Dia, uncached (spec 008 RF-4, plan-D4).
 """
 
 import logging
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from app.models.product import ProductSearchResponse
+from app.services.redis_circuit import RedisCircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +27,23 @@ def cache_key(*, postal_code: str, term: str, page: int, page_size: int) -> str:
 class SearchCacheRepository:
     """Get/set `ProductSearchResponse` entries in Redis."""
 
-    def __init__(self, redis: Redis) -> None:
+    def __init__(self, redis: Redis, *, circuit: RedisCircuitBreaker | None = None) -> None:
         self._redis = redis
+        # Production passes the process's circuit; without one, Redis is always tried.
+        self._circuit = circuit if circuit is not None else RedisCircuitBreaker()
 
     async def get(
         self, *, postal_code: str, term: str, page: int, page_size: int
     ) -> ProductSearchResponse | None:
-        """Return the cached response, or `None` on a miss or a corrupted value (plan-D10)."""
+        """Return the cached response, or `None` on a miss, a corrupted value (plan-D10)
+        or without Redis."""
         key = cache_key(postal_code=postal_code, term=term, page=page, page_size=page_size)
-        raw = await self._redis.get(key)
+        try:
+            raw = await self._circuit.call(lambda: self._redis.get(key))
+        except RedisError:
+            # The circuit already warned (spec 008 spec-D5).
+            logger.debug("redis unavailable op=search_cache.get")
+            return None
         if raw is None:
             return None
         try:
@@ -52,4 +65,8 @@ class SearchCacheRepository:
         ttl_seconds: int,
     ) -> None:
         key = cache_key(postal_code=postal_code, term=term, page=page, page_size=page_size)
-        await self._redis.set(key, response.model_dump_json(), ex=ttl_seconds)
+        value = response.model_dump_json()
+        try:
+            await self._circuit.call(lambda: self._redis.set(key, value, ex=ttl_seconds))
+        except RedisError:
+            logger.debug("redis unavailable op=search_cache.set")

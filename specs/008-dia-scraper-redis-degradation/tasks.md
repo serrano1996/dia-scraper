@@ -25,9 +25,10 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 - **GREEN:** `app/services/redis_circuit.py`.
 - **RF:** RF-2, RF-3, RF-9
 
-### [ ] T3 — Caches sin Redis
+### [x] T3 — Caches sin Redis
 - **RED:** `tests/redis_doubles.py` (plan-D8); `test_search_cache.py` y `test_postal_code_cache.py`: con `BrokenRedis` (`DOWN`, `HUNG`) y con el circuito abierto, `get` → `None`, `is_marked` → `False`, `set`/`mark` sin excepción, `DEBUG` (plan-D4).
 - **GREEN:** `search_cache.py`, `postal_code_cache.py` con `circuit` opcional.
+- **Nota:** `BrokenRedis` lanza al acceder al comando (como el doble de Alcampo), no desde una corrutina: cubre igual comandos y `pipeline()`, porque el circuito llama a la operación dentro de su `try`.
 - **RF:** RF-4, RF-5
 
 ### [ ] T4 — Enfriamiento sin Redis
