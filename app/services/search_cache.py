@@ -1,12 +1,16 @@
 """Redis-backed cache for search responses (spec 001 RF-13, RF-14).
 
-One entry per postal code, term, page and page size. In spec 001 the postal
-code is always Dia's default (plan-D4); spec 002 will pass the resolved one.
+One entry per requested postal code, term, page and page size (spec 002
+RF-11): Dia exposes no store to group postal codes by.
 """
+
+import logging
 
 from redis.asyncio import Redis
 
 from app.models.product import ProductSearchResponse
+
+logger = logging.getLogger(__name__)
 
 
 def cache_key(*, postal_code: str, term: str, page: int, page_size: int) -> str:
@@ -32,6 +36,9 @@ class SearchCacheRepository:
         try:
             return ProductSearchResponse.model_validate_json(raw)
         except ValueError:
+            # A miss, but worth knowing: a schema change or a foreign writer (spec 004 RF-15).
+            # The key holds the client's term: %r keeps it on one line (RF-17).
+            logger.warning("corrupted cache entry treated as a miss key=%r", key)
             return None
 
     async def set(

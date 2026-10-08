@@ -65,7 +65,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** `map_search` (plan-D9).
 - **RF:** RF-13, RF-14
 
-### [ ] T9 — Cache corrupta
+### [x] T9 — Cache corrupta
 - **RED:** `test_search_cache.py`: entrada corrupta → `WARNING` con la clave (`%r`).
 - **GREEN:** `search_cache.py`.
 - **RF:** RF-15

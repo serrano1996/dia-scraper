@@ -88,3 +88,26 @@ async def test_corrupted_entry_is_a_miss(
     await redis.set("search:28041:leche:1:50", stored)
 
     assert await cache.get(**KEY) is None
+
+
+async def test_a_corrupted_entry_is_a_warning_with_its_key(
+    cache: SearchCacheRepository, redis: FakeAsyncRedis, caplog: pytest.LogCaptureFixture
+) -> None:
+    # spec 004 RF-15, T9.
+    await redis.set("search:28041:leche:1:50", b"{no json")
+
+    with caplog.at_level("INFO", logger="app.services.search_cache"):
+        assert await cache.get(**KEY) is None
+
+    [record] = [r for r in caplog.records if r.name == "app.services.search_cache"]
+    assert record.levelname == "WARNING"
+    assert "key='search:28041:leche:1:50'" in record.getMessage()
+
+
+async def test_a_plain_miss_logs_nothing(
+    cache: SearchCacheRepository, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("INFO", logger="app.services.search_cache"):
+        assert await cache.get(**KEY) is None
+
+    assert not [r for r in caplog.records if r.name == "app.services.search_cache"]
