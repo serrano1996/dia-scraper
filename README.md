@@ -16,7 +16,32 @@ cp .env.example .env
 uvicorn app.main:app --reload       # http://127.0.0.1:8000/docs
 ```
 
-Necesita un Redis accesible en `REDIS_URL`.
+Necesita un Redis accesible en `REDIS_URL` y al menos un token en `API_KEYS`.
+
+## Autenticación
+
+Todo lo que cuelga de `/api/v1/` exige la cabecera `X-API-Key` con uno de los tokens de
+`API_KEYS`. Se comprueba antes que nada: una petición sin token válido no valida parámetros, no
+lee Redis y no llama a Dia, así que nadie de fuera puede gastar los límites hacia Dia ni provocar
+un bloqueo de Akamai.
+
+- Sin cabecera, vacía o con un token que no coincide exactamente (sin recortar espacios ni
+  ignorar mayúsculas): `401 {"detail": "Invalid or missing API key"}` con
+  `WWW-Authenticate: ApiKey`. Siempre la misma respuesta, para no dar pistas.
+- `API_KEYS` admite varios tokens separados por comas: para rotar sin cortes, se añade el nuevo,
+  se cambian los clientes y se quita el viejo.
+- Sin ningún token configurado la API arranca, avisa en el log y responde `401` a todo
+  `/api/v1/`.
+- Públicos: `/health` (`{"status": "ok"}`, no toca Redis ni Dia), `/docs`, `/redoc` y
+  `/openapi.json`.
+- Los tokens nunca aparecen en los logs; si alguien manda uno en la URL (`?api_key=…`, `?token=…`,
+  `?key=…`), no autentica y en el log sale como `'***'`.
+
+La longitud no se valida: genera tokens largos y aleatorios, por ejemplo con
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
 ## Endpoint
 
@@ -30,7 +55,7 @@ Necesita un Redis accesible en `REDIS_URL`.
 | `page_size` | no | 1–100, por defecto 50 |
 
 ```bash
-curl "http://127.0.0.1:8000/api/v1/products?postal_code=28041&term=leche&page=1&page_size=50"
+curl -H "X-API-Key: $DIA_API_KEY" "http://127.0.0.1:8000/api/v1/products?postal_code=28041&term=leche&page=1&page_size=50"
 ```
 
 ```json
@@ -72,6 +97,7 @@ curl "http://127.0.0.1:8000/api/v1/products?postal_code=28041&term=leche&page=1&
 
 | Código | Cuándo | Cuerpo |
 |---|---|---|
+| `401` | falta `X-API-Key` o no es válida (ver [Autenticación](#autenticación)) | `{"detail": "Invalid or missing API key"}` |
 | `422` | parámetros inválidos (no se llama a Dia) | formato de FastAPI |
 | `404` | Dia no da servicio en ese código postal, o no existe (Dia no los distingue) | `{"detail": "Postal code not served by Dia"}` |
 | `404` | `page` > 1 más allá de la última página | `{"detail": "Page out of range"}` |
@@ -169,6 +195,7 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
 | `NEW_SESSION_LIMIT` | `10` | códigos postales nuevos (sesiones) por ventana (`0` = sin límite) |
 | `NEW_SESSION_WINDOW_SECONDS` | `600` | ventana del límite anterior |
 | `RETRY_JITTER_MAX_S` | `0.3` | aleatorio máximo sumado a cada espera entre reintentos (`0` = sin aleatorio) |
+| `API_KEYS` | vacía (nadie entra) | tokens válidos para `X-API-Key`, separados por comas |
 
 ## Limitaciones conocidas
 

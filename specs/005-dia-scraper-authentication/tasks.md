@@ -60,3 +60,16 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 ### [ ] T8 — Docs vivas y verificación manual
 - **Hacer:** README (sección "Autenticación": cabecera, `401`, rotación con varios tokens, cómo generar uno fuerte; `/health`; `API_KEYS` en la tabla de configuración). `.env.example` con `API_KEYS=` (pedírselo al usuario si el agente no puede escribirlo). Verificación manual: sin cabecera, inválida y válida (1 búsqueda real) → `401`/`401`/`200`, y ningún log muestra el token.
 - **RF:** RNF-3. **Fin de PR2.**
+
+#### Resultado de la verificación manual (2026-10-08)
+
+App real (`lifespan`, autenticación, middleware) contra `https://www.dia.es`, Redis sustituido por `FakeAsyncRedis`, con un token generado al vuelo (`secrets.token_urlsafe(32)`, no se guardó) en `API_KEYS`:
+
+| Petición | Resultado | Log |
+|---|---|---|
+| Sin cabecera | `401` | `WARNING rejected request: API key reason=missing path='/api/v1/products'` |
+| `X-API-Key: nope` | `401` | `WARNING … reason=invalid …` |
+| Token válido (`yogur`, 28041) | `200` en 529 ms; 1 búsqueda real a Dia | `dia session created postal_code='28041' reason=new` |
+| `/health` sin cabecera | `200` | inicio y fin |
+
+El token no aparece en ninguna línea del log. Solo la petición con token válido llegó a Dia.
