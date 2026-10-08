@@ -18,6 +18,31 @@ uvicorn app.main:app --reload       # http://127.0.0.1:8000/docs
 
 Necesita un Redis accesible en `REDIS_URL` y al menos un token en `API_KEYS`.
 
+### Con Docker
+
+API y Redis en contenedores, sin instalar Python ni Redis:
+
+```bash
+cp .env.example .env               # rellena DIA_BASE_URL y API_KEYS
+docker compose up --build          # http://127.0.0.1:8000/docs
+docker compose logs -f api         # logs, con request id
+docker compose down                # parar y borrar los contenedores
+```
+
+- El compose pone `REDIS_URL` apuntando a su propio Redis, aunque el `.env` diga otra cosa, y
+  arranca la API solo cuando Redis responde.
+- Puerto del host: `API_PORT` (por defecto `8000`). Redis no se publica fuera.
+- Sin `.env`, la API termina al arrancar con el error de la variable que falta.
+- El Redis del compose es **efímero**: al reiniciar se pierden la cache, los códigos postales sin
+  servicio recordados, el enfriamiento y los límites. Las sesiones de Dia (en memoria) también.
+- **Un worker por contenedor**: las sesiones de Dia viven en la memoria del proceso. Para escalar,
+  más contenedores sobre el mismo Redis (comparten límites y enfriamiento; cada uno paga sus
+  propios cambios de código postal en Dia).
+- La imagen (`python:3.11-slim`) corre con un usuario sin privilegios, sin el access log de
+  uvicorn (el middleware ya registra cada petición) y con un `HEALTHCHECK` contra `/health`.
+- Sin lockfile: la imagen instala las dependencias dentro de las cotas de `pyproject.toml`, así que
+  dos builds en fechas distintas pueden traer versiones distintas.
+
 ## Autenticación
 
 Todo lo que cuelga de `/api/v1/` exige la cabecera `X-API-Key` con uno de los tokens de

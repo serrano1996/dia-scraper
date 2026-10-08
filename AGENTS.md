@@ -14,7 +14,14 @@ uvicorn app.main:app --reload    # arrancar en local (http://127.0.0.1:8000/docs
 pytest                           # tests (nunca llaman a Dia real)
 ruff check . && ruff format .    # lint + formato (obligatorio antes de cada commit)
 mypy                             # tipos, estricto, sobre app/ (obligatorio antes de cada commit)
+docker compose up --build        # API + Redis en contenedores (necesita .env)
+docker compose down              # parar y borrar los contenedores
 ```
+
+- `tests/infra/test_compose.py` usa el CLI `docker` (no el daemon) y se salta si no está instalado.
+- **Nunca** ejecutes `docker compose config` en la raíz del repo para inspeccionarlo: copia el
+  contenido del `.env` (tokens de `API_KEYS` incluidos) en la salida. Los tests lo hacen sobre
+  una copia en un directorio temporal.
 
 ## Proceso
 
