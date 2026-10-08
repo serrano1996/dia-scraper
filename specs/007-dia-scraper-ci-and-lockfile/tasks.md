@@ -35,3 +35,15 @@ Formato de commit: `<tipo>(007-dia-scraper-ci-and-lockfile): <descripción en in
 - **RF:** RF-11
 
 - **Pendiente tras el push del usuario:** comprobar que el primer run de la CI en GitHub pasa (el agente no hace push).
+
+---
+
+## Revisión con contexto nuevo (2026-10-08)
+
+Revisión adversarial de `1fdba7d..HEAD` antes del PR: 0 CRITICAL, 5 WARNING, 4 SUGGESTION. Confirmado el principal: ningún lock fijaba `setuptools`, y `pip install --no-deps .` (imagen) y `-e .` (CI) lo descargaban de PyPI sin hash para construir el paquete en un entorno aislado, contra RF-4.
+
+### [x] T5 — Correcciones de la revisión
+- **RED:** `requirements-build.lock` fija con hash lo que pide `[build-system].requires`; la imagen y la CI lo instalan con `--require-hashes` y construyen con `--no-build-isolation`; `.dockerignore` lo readmite.
+- **GREEN:** `scripts/lock.sh` genera el tercer lock (de `[build-system].requires`), solo acepta `--upgrade` (otra cosa iría dentro de `sh -c`) y limpia `*.egg-info`/`build` aunque falle; `Dockerfile`, `ci.yml`, `.dockerignore`. Las referencias a "spec 014" de `test_ci_workflow.py` pasan a "spec 007". `AGENTS.md`: "Linux" (los hashes son de wheels de Linux), no "Linux/macOS".
+- **Comprobado con el daemon:** la imagen se construye sin aislamiento (`setuptools 84.0.0` del lock); los pasos de instalación de la CI, tal cual, en un `python:3.11-slim` limpio: instalación con hashes, `pip check`, `ruff`, `mypy` y 591 tests (sin los del compose, que necesitan el CLI `docker`, presente en el runner).
+- **Documentado, no corregido:** una dependencia quitada de `pyproject.toml` sigue en el lock hasta regenerarlo (detectarlo exigiría regenerar el lock en cada run de la CI, ~2,5 min). Acciones fijadas por etiqueta (`@v7`), no por SHA.

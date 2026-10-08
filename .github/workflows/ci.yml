@@ -25,13 +25,14 @@ jobs:
           # The cache follows the lock, not the default requirements*.txt (plan-D5).
           cache-dependency-path: requirements-dev.lock
 
-      # The pinned dev dependencies with hashes, the package alone, and
+      # The pinned dev dependencies and build backend with hashes, the package
+      # alone built with them (nothing fetched unhashed, review T5), and
       # `pip check` fails if pyproject.toml declares something the lock lacks
       # (regenerate it with scripts/lock.sh) (RF-5, plan-D4).
       - name: Install
         run: |
-          pip install --require-hashes -r requirements-dev.lock
-          pip install --no-deps -e .
+          pip install --require-hashes -r requirements-dev.lock -r requirements-build.lock
+          pip install --no-deps --no-build-isolation -e .
           pip check
 
       - name: Lint

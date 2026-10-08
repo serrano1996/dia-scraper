@@ -50,19 +50,22 @@ def test_runs_every_check_that_closes_a_task(workflow: dict, command: str) -> No
 
 
 def test_installs_the_pinned_dev_dependencies(workflow: dict) -> None:
-    # Spec 014 RF-4: the dev lock with hashes, the package alone, then `pip check`
+    # Spec 007 RF-4, RF-5: the dev lock with hashes, the package alone, then `pip check`
     # fails if pyproject.toml declares something the lock lacks (plan-D3).
     runs = "\n".join(commands(workflow))
 
-    assert "pip install --require-hashes -r requirements-dev.lock" in runs
-    assert "pip install --no-deps -e ." in runs
+    assert (
+        "pip install --require-hashes -r requirements-dev.lock -r requirements-build.lock" in runs
+    )
+    # The editable build uses the hashed setuptools, nothing fetched (review T5).
+    assert "pip install --no-deps --no-build-isolation -e ." in runs
     assert "pip check" in runs
-    assert runs.index("requirements-dev.lock") < runs.index("--no-deps -e .")
-    assert runs.index("--no-deps -e .") < runs.index("pip check")
+    assert runs.index("requirements-dev.lock") < runs.index("--no-build-isolation -e .")
+    assert runs.index("--no-build-isolation -e .") < runs.index("pip check")
 
 
 def test_uses_current_actions_on_a_fixed_runner(workflow: dict) -> None:
-    # Spec 014 RF-6: v7 (Node 24), and no silent jump to the next Ubuntu.
+    # Spec 007 RF-8: v7 (Node 24), and no silent jump to the next Ubuntu.
     uses = [step.get("uses", "") for job in workflow["jobs"].values() for step in job["steps"]]
 
     assert "actions/checkout@v7" in uses

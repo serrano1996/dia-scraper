@@ -9,6 +9,8 @@
 !README.md
 # The pinned, hashed dependencies (spec 007 RF-4).
 !requirements.lock
+# The build backend, hashed too (review T5).
+!requirements-build.lock
 !app/
 
 # Readmitting app/ also readmits local bytecode: keep it out.

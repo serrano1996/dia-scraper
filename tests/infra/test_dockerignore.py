@@ -8,7 +8,7 @@ DOCKERIGNORE = Path(__file__).parents[2] / ".dockerignore"
 # secret file (another .env, a credentials.json...) never reaches the image.
 # README.md: pyproject declares it as the package readme (review T5).
 # requirements.lock: the pinned, hashed dependencies (spec 007 RF-4).
-READMITTED = {"pyproject.toml", "README.md", "requirements.lock", "app/"}
+READMITTED = {"pyproject.toml", "README.md", "requirements.lock", "requirements-build.lock", "app/"}
 EXCLUDED_AGAIN = ["**/__pycache__/", "**/*.py[cod]"]
 
 

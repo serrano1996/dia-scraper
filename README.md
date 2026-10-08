@@ -11,8 +11,8 @@ API REST asíncrona (FastAPI) que extrae, procesa y sirve datos de productos de
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install --require-hashes -r requirements-dev.lock   # versiones exactas, como la CI
-pip install --no-deps -e .
+pip install --require-hashes -r requirements-dev.lock -r requirements-build.lock   # como la CI
+pip install --no-deps --no-build-isolation -e .
 # En Windows, en vez de las dos anteriores: pip install -e ".[dev]" (ver "Dependencias fijadas")
 cp .env.example .env
 uvicorn app.main:app --reload       # http://127.0.0.1:8000/docs
@@ -255,8 +255,10 @@ mypy                            # tipos, estricto, sobre app/
 ### Dependencias fijadas
 
 `requirements.lock` (producción) y `requirements-dev.lock` (producción + `dev`) fijan la versión
-exacta y el hash de **todas** las dependencias, transitivas incluidas. Se generan para Linux y
-Python 3.11, la plataforma de la imagen y de la CI, y nunca se editan a mano:
+exacta y el hash de **todas** las dependencias, transitivas incluidas; `requirements-build.lock`
+fija `setuptools`, con el que se construye el paquete (`--no-build-isolation`), para que la
+imagen y la CI no descarguen nada sin hash. Se generan para Linux y Python 3.11, la plataforma de
+la imagen y de la CI, y nunca se editan a mano:
 
 ```bash
 scripts/lock.sh             # tras cambiar pyproject.toml: añade o quita lo que cambió
@@ -266,6 +268,10 @@ scripts/lock.sh --upgrade   # sube cada dependencia a lo último de su cota
 Corre en un contenedor `python:3.11-slim` desechable (necesita Docker y acceso a PyPI), con
 `pip-tools` también fijado. El cambio se revisa en el diff de los locks.
 
+- Si se **quita** una dependencia de `pyproject.toml` y no se regenera el lock, sigue instalándose
+  hasta que se ejecute `scripts/lock.sh`: ni la CI ni los tests lo detectan (solo detectan lo que
+  falta). Regenera los locks siempre que cambies `pyproject.toml`.
+
 - **Windows:** el lock incluye `uvloop` (solo Linux), así que `pip install -r requirements-dev.lock`
   falla. En Windows, `pip install -e ".[dev]"` instala lo último dentro de las cotas; la referencia
   de versiones son la CI y la imagen.
@@ -273,7 +279,7 @@ Corre en un contenedor `python:3.11-slim` desechable (necesita Docker y acceso a
 ### CI
 
 `.github/workflows/ci.yml` corre en cada push y pull request, en `ubuntu-24.04` con Python 3.11:
-instala desde `requirements-dev.lock` con hashes, `pip check` (falla si `pyproject.toml` declara
+instala desde `requirements-dev.lock` y `requirements-build.lock` con hashes, `pip check` (falla si `pyproject.toml` declara
 algo que el lock no tiene), `ruff check`, `ruff format --check`, `mypy`, `pytest` y
 `docker build`. No publica nada, tiene permisos de solo lectura y no necesita secretos.
 

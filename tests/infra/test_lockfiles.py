@@ -68,3 +68,22 @@ def test_every_line_of_a_lock_is_pinned_with_a_hash(lock: Path) -> None:
 
     assert entries
     assert len(entries) == len(pinned(lock))
+
+
+# --- Build tooling (spec 007 review, T5) ---
+
+BUILD_LOCK = ROOT / "requirements-build.lock"
+
+
+def test_the_build_backend_is_pinned_with_hashes() -> None:
+    # `pip install .` builds in an isolated env that fetched setuptools from PyPI
+    # without hashes: the build lock closes that gap.
+    pins = pinned(BUILD_LOCK)
+    build_system = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    for spec in build_system["build-system"]["requires"]:
+        requirement = Requirement(spec)
+        name = canonicalize_name(requirement.name)
+        assert name in pins, f"{name} missing from {BUILD_LOCK.name}: run scripts/lock.sh"
+        version, hashes = pins[name]
+        assert requirement.specifier.contains(version)
+        assert "--hash=sha256:" in hashes
