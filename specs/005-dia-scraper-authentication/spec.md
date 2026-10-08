@@ -49,7 +49,7 @@ Hoy `GET /api/v1/products` no pide ninguna credencial: cualquiera que conozca la
 - **RF-12.** CUANDO se rechace una petición por autenticación, EL sistema DEBERÁ registrar un `WARNING` con la ruta y si la cabecera faltaba o era inválida, **sin el valor**.
 - **RF-13.** Los `401` DEBERÁN llevar `X-Request-ID` y sus líneas de inicio y fin, como cualquier respuesta (spec 004).
 - **RF-14.** Ningún log DEBERÁ contener el valor de `X-API-Key` ni los tokens de `API_KEYS`.
-- **RF-15.** En la línea de inicio de petición, el valor de todo parámetro de consulta cuyo nombre (sin distinguir mayúsculas) sea `api_key`, `apikey`, `x-api-key`, `key` o `token` DEBERÁ sustituirse por `'***'`: un token mandado por error en la URL no llega a los logs (D1). Ese parámetro no autentica.
+- **RF-15.** En la línea de inicio de petición, el valor de todo parámetro de consulta cuyo nombre (sin distinguir mayúsculas) sea `api_key`, `apikey`, `x-api-key`, `key` o `token` DEBERÁ sustituirse por `'***'`: un token mandado por error en la URL no llega a los logs (D1). Ese parámetro no autentica. *Ampliado tras la revisión (T9):* se oculta todo parámetro cuyo nombre normalizado (sin espacios, en minúsculas, `-` como `_`) contenga `key`, `token`, `secret`, `auth` o `pass`; la lista de cinco nombres dejaba pasar `api-key`, `access_token`, `password` o `Authorization`.
 
 ### D. Documentación
 

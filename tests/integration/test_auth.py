@@ -99,3 +99,16 @@ def test_openapi_declares_the_api_key_for_api_v1(harness: Harness) -> None:
     assert scheme == {"type": "apiKey", "in": "header", "name": "X-API-Key"}
     assert schema["paths"]["/api/v1/products"]["get"]["security"] == [{name: []}]
     assert "security" not in schema["paths"].get("/health", {}).get("get", {})
+
+
+@pytest.mark.parametrize("method", ["HEAD", "OPTIONS", "POST"])
+def test_other_methods_give_no_data_without_a_token(harness: Harness, method: str) -> None:
+    # They never reach the route (405), so they cannot reach Dia either (review T9).
+    response = harness.client.request(method, URL, params=PARAMS, headers=NO_TOKEN)
+
+    assert response.status_code in {401, 405}
+    assert response.content in {
+        b"",
+        b'{"detail":"Method Not Allowed"}',
+        b'{"detail":"Invalid or missing API key"}',
+    }

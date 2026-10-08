@@ -21,10 +21,13 @@ REQUEST_ID_HEADER = "X-Request-ID"
 # Longest query logged on the start line: a huge one must not bloat the logs (review T13).
 MAX_PARAMS_LOGGED = 500
 
-# Query params whose value is hidden on the start line, matched by name and
-# case-insensitively: a client sending its key in the URL by mistake must not
-# leak it into our logs (spec 005 RF-15, plan-D6). Values are never inspected.
-SECRET_PARAM_NAMES = frozenset({"api_key", "apikey", "x-api-key", "key", "token"})
+# A query param whose name contains any of these is hidden on the start line:
+# a client sending its key in the URL by mistake must not leak it into our logs
+# (spec 005 RF-15, plan-D6). Judged by the normalised name (trimmed, lower case,
+# "-" as "_"), never by the value; broader than the five names of RF-15 after the
+# review (T9) found `api-key`, `access_token`, `password` and the like leaking.
+# None of the API's own params (postal_code, term, page, page_size) matches.
+SECRET_NAME_MARKERS = ("key", "token", "secret", "auth", "pass")
 REDACTED = "***"
 
 logger = logging.getLogger(__name__)
@@ -103,6 +106,9 @@ def _params_for_log(query_string: bytes) -> str:
 
 def redact_params(params: list[tuple[str, str]]) -> list[tuple[str, str]]:
     """`params` with the values of secret-named params replaced by `***`, order kept."""
-    return [
-        (name, REDACTED if name.lower() in SECRET_PARAM_NAMES else value) for name, value in params
-    ]
+    return [(name, REDACTED if _is_secret_name(name) else value) for name, value in params]
+
+
+def _is_secret_name(name: str) -> bool:
+    normalised = name.strip().lower().replace("-", "_")
+    return any(marker in normalised for marker in SECRET_NAME_MARKERS)

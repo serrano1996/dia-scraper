@@ -237,3 +237,23 @@ def test_api_keys_never_appear_in_the_settings_repr(monkeypatch: pytest.MonkeyPa
 
     assert "synthetic-secret" not in repr(settings)
     assert "synthetic-secret" not in str(settings)
+
+
+def test_api_keys_are_left_out_of_every_dump(monkeypatch: pytest.MonkeyPatch) -> None:
+    # repr=False alone left them in model_dump() and model_dump_json() (review T9).
+    set_required(monkeypatch)
+    monkeypatch.setenv("API_KEYS", "synthetic-secret-1")
+
+    settings = Settings(_env_file=None)
+
+    assert "api_keys" not in settings.model_dump()
+    assert "synthetic-secret" not in settings.model_dump_json()
+    assert settings.api_keys == frozenset({"synthetic-secret-1"})
+
+
+def test_empty_keys_are_dropped_whatever_the_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    set_required(monkeypatch)
+
+    settings = Settings(_env_file=None, api_keys={"", "  ", "real-one"})
+
+    assert settings.api_keys == frozenset({"real-one"})

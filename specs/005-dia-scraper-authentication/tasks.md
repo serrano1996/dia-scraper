@@ -57,7 +57,7 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 - **GREEN:** `GET /health` en `main.py`.
 - **RF:** RF-1, RF-6, RF-13, RF-14, RF-16
 
-### [ ] T8 — Docs vivas y verificación manual
+### [x] T8 — Docs vivas y verificación manual
 - **Hacer:** README (sección "Autenticación": cabecera, `401`, rotación con varios tokens, cómo generar uno fuerte; `/health`; `API_KEYS` en la tabla de configuración). `.env.example` con `API_KEYS=` (pedírselo al usuario si el agente no puede escribirlo). Verificación manual: sin cabecera, inválida y válida (1 búsqueda real) → `401`/`401`/`200`, y ningún log muestra el token.
 - **RF:** RNF-3. **Fin de PR2.**
 
@@ -73,3 +73,15 @@ App real (`lifespan`, autenticación, middleware) contra `https://www.dia.es`, R
 | `/health` sin cabecera | `200` | inicio y fin |
 
 El token no aparece en ninguna línea del log. Solo la petición con token válido llegó a Dia.
+
+---
+
+## Revisión con contexto nuevo (2026-10-08)
+
+Revisión adversarial de seguridad de `1577be2..HEAD` (app y tests) antes del PR: 0 CRITICAL, ningún bypass de autenticación, 4 WARNING, 3 SUGGESTION. Comprobados por el revisor: cabeceras duplicadas (Starlette usa la primera), mayúsculas en el nombre de la cabecera, `//api/v1/products` (`404`), `401` antes que `422`, inyección en el log del `401` (`%r`).
+
+### [x] T9 — Correcciones de la revisión
+- **RED:** `api-key`, `API-KEY`, `access_token`, `secret`, `password`, `Authorization`, nombres con espacios y `api_key[]` también se ocultan, y `postal_code`, `term`, `page` y `page_size` nunca; `model_dump()` y `model_dump_json()` no contienen los tokens; un conjunto de tokens con entradas vacías las descarta aunque no venga como texto; `HEAD`, `OPTIONS` y `POST` sin token no devuelven datos.
+- **GREEN:** `redact_params` por fragmentos del nombre normalizado (`key`, `token`, `secret`, `auth`, `pass`); `api_keys` con `exclude=True`; el validador limpia cualquier iterable.
+- **No aplicadas:** longitud mínima del token (spec-D4: se documenta cómo generar uno fuerte); límite de intentos fallidos (fuera de alcance, se hace en el proxy); `500` en lugar de `401` si la app corre sin `lifespan` (falla cerrado, sin acceso a nada); ocultar `/docs` en producción (público por diseño, RF-6).
+- **RF:** RF-8, RF-11, RF-15

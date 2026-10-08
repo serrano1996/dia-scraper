@@ -193,3 +193,33 @@ def test_redact_params_keeps_order_and_repeated_names() -> None:
         ("token", "***"),
         ("term", "b"),
     ]
+
+
+# --- Fixes from the fresh review (spec 005 T9) ---
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "api-key",
+        "API-KEY",
+        "access_token",
+        "secret",
+        "password",
+        "Authorization",
+        " api_key",
+        "api_key ",
+        "api_key[]",
+        "apiKey",
+    ],
+)
+def test_near_miss_secret_names_are_hidden_too(name: str) -> None:
+    assert redact_params([(name, "s3cr3t"), ("term", "leche")]) == [
+        (name, "***"),
+        ("term", "leche"),
+    ]
+
+
+@pytest.mark.parametrize("name", ["postal_code", "term", "page", "page_size"])
+def test_the_apis_own_params_are_never_hidden(name: str) -> None:
+    assert redact_params([(name, "v")]) == [(name, "v")]

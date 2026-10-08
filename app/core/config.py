@@ -48,8 +48,11 @@ class Settings(BaseSettings):
     # Tokens accepted in X-API-Key (spec 005), comma-separated in the environment.
     # `NoDecode` stops pydantic-settings from reading it as JSON ("a,b" would fail)
     # and `repr=False` keeps the tokens out of any printed or logged Settings
-    # (RF-8, RF-11, plan-D1). Empty = nobody authenticates (RF-9).
-    api_keys: Annotated[frozenset[str], NoDecode] = Field(default=frozenset(), repr=False)
+    # (RF-8, RF-11, plan-D1); `exclude=True` keeps them out of model_dump() and
+    # model_dump_json() too (review T9). Empty = nobody authenticates (RF-9).
+    api_keys: Annotated[frozenset[str], NoDecode] = Field(
+        default=frozenset(), repr=False, exclude=True
+    )
 
     @field_validator("log_level")
     @classmethod
@@ -63,9 +66,13 @@ class Settings(BaseSettings):
     @field_validator("api_keys", mode="before")
     @classmethod
     def _split_api_keys(cls, value: object) -> object:
-        """`" a , ,b "` -> `{"a", "b"}`: trim each entry and drop empty ones (RF-8)."""
-        if isinstance(value, str):
-            return frozenset(key.strip() for key in value.split(",") if key.strip())
+        """`" a , ,b "` -> `{"a", "b"}`: trim each entry and drop empty ones (RF-8).
+
+        Any iterable too, not only the environment's string (review T9).
+        """
+        entries = value.split(",") if isinstance(value, str) else value
+        if isinstance(entries, (list, tuple, set, frozenset)):
+            return frozenset(str(key).strip() for key in entries if str(key).strip())
         return value
 
 
