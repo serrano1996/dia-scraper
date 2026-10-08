@@ -20,7 +20,7 @@ Formato de commit: `<tipo>(006-dia-scraper-dockerization): <descripción en ingl
 - **GREEN:** `.dockerignore`.
 - **RF:** RF-4
 
-### [ ] T2 — `Dockerfile`
+### [x] T2 — `Dockerfile`
 - **RED:** `tests/infra/test_dockerfile.py`: los casos de plan §3 (dos etapas sobre `python:3.11-slim`, `pip install` sin `[dev]` y con `--no-cache-dir`, usuario no `root`, `CMD` exec con `--no-access-log` y sin `--reload` ni `--workers`, `HEALTHCHECK` a `127.0.0.1:8000/health` con `trust_env=False`, `PYTHONUNBUFFERED=1`, sin `API_KEYS` ni `.env`).
 - **GREEN:** `Dockerfile` (plan-D1, D3, D4, D6).
 - **RF:** RF-1, RF-2, RF-3, RF-5, RF-6, RF-12, RF-13
