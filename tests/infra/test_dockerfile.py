@@ -121,3 +121,24 @@ def test_the_builder_copies_the_package_readme() -> None:
     copies = [args for kw, args in instructions() if kw == "COPY" and "--from" not in args]
 
     assert any("README.md" in args for args in copies)
+
+
+def test_installs_the_pinned_dependencies_then_the_project_alone() -> None:
+    # Spec 007 RF-4, plan-D3: exact versions checked by hash, then the package
+    # without resolving anything again.
+    installs = " && ".join(args for args in args_of("RUN") if "pip install" in args)
+
+    assert "--require-hashes -r requirements.lock" in installs
+    assert "--no-deps ." in installs
+    assert installs.index("requirements.lock") < installs.index("--no-deps .")
+
+
+def test_the_lock_is_installed_before_the_code_is_copied() -> None:
+    # Its own layer: a code change does not reinstall the dependencies (plan-D3).
+    steps = [(kw, args) for kw, args in instructions()]
+    lock_install = next(
+        i for i, (kw, a) in enumerate(steps) if kw == "RUN" and "requirements.lock" in a
+    )
+    code_copy = next(i for i, (kw, a) in enumerate(steps) if kw == "COPY" and "app/" in a)
+
+    assert lock_install < code_copy

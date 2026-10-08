@@ -20,7 +20,7 @@ Formato de commit: `<tipo>(007-dia-scraper-ci-and-lockfile): <descripción en in
 - **GREEN:** `scripts/lock.sh` (plan-D1, D2) y ejecutarlo (necesita Docker y acceso a PyPI) para generar `requirements.lock` y `requirements-dev.lock`.
 - **RF:** RF-1, RF-2, RF-3
 
-### [ ] T2 — La imagen instala desde el lock
+### [x] T2 — La imagen instala desde el lock
 - **RED:** `test_dockerfile.py`: `--require-hashes -r requirements.lock` antes de `--no-deps .`; `test_dockerignore.py`: se readmite `requirements.lock`.
 - **GREEN:** `Dockerfile` (plan-D3) y `.dockerignore`. Comprobar con el daemon que `docker build` funciona.
 - **RF:** RF-4
