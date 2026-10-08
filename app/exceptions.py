@@ -29,7 +29,15 @@ class UpstreamBlockedError(UpstreamUnavailableError):
     """
 
 
-class CooldownActiveError(UpstreamUnavailableError):
+class UpstreamThrottledError(UpstreamUnavailableError):
+    """Parent of the foreseen, managed degradations: we chose not to call Dia.
+
+    The 502 handler logs the whole family as a WARNING, not an ERROR: the
+    actionable ERROR is the Akamai block that caused them (spec 004 RF-7, plan-D6).
+    """
+
+
+class CooldownActiveError(UpstreamThrottledError):
     """Raised when a request to Dia is refused because an Akamai cooldown is active.
 
     After a block the service stops calling Dia for a while (spec 003 RF-1, RF-2).
@@ -37,7 +45,7 @@ class CooldownActiveError(UpstreamUnavailableError):
     """
 
 
-class OutboundRateLimitedError(UpstreamUnavailableError):
+class OutboundRateLimitedError(UpstreamThrottledError):
     """Raised when a request to Dia would exceed an outbound limit (spec 003 RF-5, RF-7).
 
     No request is sent. The standard 502, never retried (plan-D4).

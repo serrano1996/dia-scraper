@@ -1,5 +1,6 @@
 """Application factory and lifespan: creates and closes the shared clients."""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 
@@ -13,14 +14,18 @@ from app.core.state import AppResources
 from app.exceptions import (
     PageOutOfRangeError,
     PostalCodeNotServedError,
+    UpstreamThrottledError,
     UpstreamUnavailableError,
 )
+from app.middleware.request_context import RequestContextMiddleware
 from app.scrapers.dia_session import DiaSession
 from app.scrapers.http_client import create_http_client
 from app.services.cooldown import AkamaiCooldown
 from app.services.outbound import OutboundGate
 from app.services.postal_code_sessions import PostalCodeSessions
 from app.services.rate_limiter import RateLimiter
+
+logger = logging.getLogger(__name__)
 
 
 def create_redis(settings: Settings) -> redis.Redis:
@@ -73,10 +78,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title="dia-scraper", lifespan=lifespan)
     app.include_router(products_router)
+    # The outermost middleware: every request gets its id and its start and
+    # end lines, 422s and 500s included (spec 004 plan-D5).
+    app.add_middleware(RequestContextMiddleware)
 
     @app.exception_handler(UpstreamUnavailableError)
     async def upstream_unavailable(request: Request, exc: UpstreamUnavailableError) -> JSONResponse:
-        # Our own detail, never Dia's body nor `exc.reason` (RF-20). Covers
+        postal_code = request.query_params.get("postal_code")
+        term = request.query_params.get("term")
+        # Client values through %r: they cannot forge lines (spec 004 RF-17).
+        if isinstance(exc, UpstreamThrottledError):
+            # Foreseen and managed: the actionable ERROR was the block (RF-7, spec-D2).
+            logger.warning(
+                "search throttled reason=%r postal_code=%r term=%r", exc.reason, postal_code, term
+            )
+        else:
+            logger.error(
+                "upstream unavailable reason=%r postal_code=%r term=%r",
+                exc.reason,
+                postal_code,
+                term,
+            )
+        # Our own detail, never Dia's body nor `exc.reason` (spec 001 RF-20). Covers
         # `UpstreamBlockedError` too (RF-19).
         return JSONResponse(status_code=502, content={"detail": "Upstream service unavailable"})
 
@@ -84,11 +107,15 @@ def create_app() -> FastAPI:
     async def postal_code_not_served(
         request: Request, exc: PostalCodeNotServedError
     ) -> JSONResponse:
-        # An answer, not a failure: our own detail, never Dia's text (spec 002 RF-4).
+        # An answer, not a failure: INFO, and our own detail, never Dia's text
+        # (spec 002 RF-4, spec 004 RF-8).
+        logger.info("postal code not served postal_code=%r", exc.postal_code)
         return JSONResponse(status_code=404, content={"detail": "Postal code not served by Dia"})
 
     @app.exception_handler(PageOutOfRangeError)
     async def page_out_of_range(request: Request, exc: PageOutOfRangeError) -> JSONResponse:
+        # The search ended before that page: an answer, not a failure (spec 004 RF-8).
+        logger.info("page out of range page=%d term=%r", exc.page, request.query_params.get("term"))
         return JSONResponse(status_code=404, content={"detail": "Page out of range"})
 
     return app

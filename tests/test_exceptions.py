@@ -6,6 +6,7 @@ from app.exceptions import (
     PageOutOfRangeError,
     PostalCodeNotServedError,
     UpstreamBlockedError,
+    UpstreamThrottledError,
     UpstreamUnavailableError,
 )
 
@@ -54,3 +55,11 @@ def test_anti_ban_refusals_are_upstream_failures_but_not_blocks() -> None:
     for error in (CooldownActiveError("cooldown"), OutboundRateLimitedError("limit")):
         assert isinstance(error, UpstreamUnavailableError)
         assert not isinstance(error, UpstreamBlockedError)
+
+
+def test_foreseen_degradations_share_a_throttled_parent() -> None:
+    # One family logged as WARNING by the 502 handler (spec 004 plan-D6).
+    assert issubclass(UpstreamThrottledError, UpstreamUnavailableError)
+    assert issubclass(CooldownActiveError, UpstreamThrottledError)
+    assert issubclass(OutboundRateLimitedError, UpstreamThrottledError)
+    assert not issubclass(UpstreamBlockedError, UpstreamThrottledError)

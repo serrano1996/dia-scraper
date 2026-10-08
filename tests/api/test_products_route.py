@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 import pytest
@@ -5,6 +6,8 @@ from fastapi.testclient import TestClient
 
 from app.core.dependencies import get_product_service
 from app.exceptions import (
+    CooldownActiveError,
+    OutboundRateLimitedError,
     PageOutOfRangeError,
     PostalCodeNotServedError,
     UpstreamBlockedError,
@@ -114,3 +117,55 @@ def test_a_postal_code_dia_does_not_serve_answers_404() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Postal code not served by Dia"}
+
+
+# --- Logs of the domain handlers (spec 004 RF-5, RF-7, RF-8, T4) ---
+
+
+def records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [r for r in caplog.records if r.name == "app.main"]
+
+
+def test_an_upstream_failure_is_an_error_with_reason_and_search(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    error = UpstreamUnavailableError("status 404")
+
+    with caplog.at_level(logging.INFO):
+        response = client_with(FakeService(error)).get(URL, params=PARAMS)
+
+    assert "X-Request-ID" in response.headers
+    [record] = records(caplog)
+    assert record.levelno == logging.ERROR
+    assert "reason='status 404'" in record.getMessage()
+    assert "postal_code='28001'" in record.getMessage()
+    assert "term='leche'" in record.getMessage()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [CooldownActiveError("akamai cooldown active"), OutboundRateLimitedError("limit: dia")],
+    ids=["cooldown", "limit"],
+)
+def test_foreseen_degradations_are_warnings(caplog: pytest.LogCaptureFixture, error) -> None:
+    with caplog.at_level(logging.INFO):
+        response = client_with(FakeService(error)).get(URL, params=PARAMS)
+
+    assert response.status_code == 502
+    [record] = records(caplog)
+    assert record.levelno == logging.WARNING
+
+
+@pytest.mark.parametrize(
+    "error",
+    [PostalCodeNotServedError("35001"), PageOutOfRangeError(3)],
+    ids=["not-served", "out-of-range"],
+)
+def test_404_answers_are_info(caplog: pytest.LogCaptureFixture, error) -> None:
+    with caplog.at_level(logging.INFO):
+        response = client_with(FakeService(error)).get(URL, params=PARAMS)
+
+    assert response.status_code == 404
+    assert "X-Request-ID" in response.headers
+    [record] = records(caplog)
+    assert record.levelno == logging.INFO

@@ -36,7 +36,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 
 ## PR2 — Errores, reintentos y bloqueo
 
-### [ ] T4 — Handlers y `UpstreamThrottledError`
+### [x] T4 — Handlers y `UpstreamThrottledError`
 - **RED:** `test_exceptions.py`: jerarquía de plan-D6. `test_products_route.py`: `UpstreamUnavailableError` → `ERROR` con `reason`, `postal_code` y `term`; `CooldownActiveError` y `OutboundRateLimitedError` → `WARNING`; `PostalCodeNotServedError` y `PageOutOfRangeError` → `INFO`; el middleware ya registrado en `create_app` pone `X-Request-ID` en `404` y `502`.
 - **GREEN:** `exceptions.py`, `main.py` (middleware y logs en handlers).
 - **RF:** RF-5, RF-7, RF-8
