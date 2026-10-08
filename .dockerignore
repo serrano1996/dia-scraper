@@ -1,0 +1,12 @@
+# Allowlist, not a denylist (spec 006 RF-4, RNF-3, spec-D5): exclude everything
+# and readmit only what `pip install .` needs. Any new file (another .env, a
+# credentials.json, local notes...) stays out of the build context by default,
+# without anyone having to remember to add it here.
+*
+
+!pyproject.toml
+!app/
+
+# Readmitting app/ also readmits local bytecode: keep it out.
+**/__pycache__/
+**/*.py[cod]

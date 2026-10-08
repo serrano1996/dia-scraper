@@ -1,6 +1,6 @@
 # Tasks 006 — Dockerización
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-08)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 1 PR.
 
@@ -15,7 +15,7 @@ Formato de commit: `<tipo>(006-dia-scraper-dockerization): <descripción en ingl
 
 ---
 
-### [ ] T1 — `.dockerignore`
+### [x] T1 — `.dockerignore`
 - **RED:** `tests/infra/test_dockerignore.py`: primera regla `*`; solo `!pyproject.toml` y `!app/`; `**/__pycache__/` y `**/*.py[cod]` después de `!app/`.
 - **GREEN:** `.dockerignore`.
 - **RF:** RF-4
