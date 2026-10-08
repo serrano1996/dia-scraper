@@ -20,7 +20,7 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 - **GREEN:** `config.py`, `create_redis`.
 - **RF:** RF-1
 
-### [ ] T2 — Circuit breaker
+### [x] T2 — Circuit breaker
 - **RED:** `tests/services/test_redis_circuit.py` con reloj falso: abre con `RedisError` (`WARNING` con el tipo, sin el mensaje), abierto no llama, prueba tras `open_seconds`, cierra con `INFO` o reabre; un error ajeno a Redis no lo abre; `open_seconds=0` nunca abre pero registra `WARNING` por fallo (plan-D2, D3).
 - **GREEN:** `app/services/redis_circuit.py`.
 - **RF:** RF-2, RF-3, RF-9
