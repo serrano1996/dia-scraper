@@ -221,3 +221,36 @@ async def test_retry_lines_name_the_put_path(caplog) -> None:
         await session.aclose()
 
     assert any(f"path={SAVE_SHIPPING_ADDRESS_PATH}" in r.getMessage() for r in caplog.records)
+
+
+# --- Unexpected answers are errors (spec 004 RF-12, T7) ---
+
+
+@respx.mock
+async def test_an_unexpected_put_answer_is_an_error_with_path_and_status(caplog) -> None:
+    respx.put(PUT_URL).mock(return_value=httpx.Response(200, json={}))
+
+    with (
+        caplog.at_level("INFO", logger="app.scrapers.dia_session"),
+        pytest.raises(UpstreamUnavailableError),
+    ):
+        await set_postal_code()
+
+    [record] = [r for r in caplog.records if r.name == "app.scrapers.dia_session"]
+    assert record.levelname == "ERROR"
+    assert f"path={SAVE_SHIPPING_ADDRESS_PATH}" in record.getMessage()
+    assert "status=200" in record.getMessage()
+
+
+@respx.mock
+async def test_a_postal_code_not_served_is_not_an_error(caplog) -> None:
+    respx.put(PUT_URL).mock(
+        return_value=httpx.Response(
+            206, json=load_fixture("dia_save_shipping_address_no_service.json")
+        )
+    )
+
+    with caplog.at_level("INFO"), pytest.raises(PostalCodeNotServedError):
+        await set_postal_code("35001")
+
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]

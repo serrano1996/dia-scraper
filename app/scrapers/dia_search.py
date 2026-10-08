@@ -1,6 +1,7 @@
 """Client for Dia's product search endpoint (Fase 0 §1)."""
 
 import asyncio
+import logging
 
 import httpx
 from pydantic import ValidationError
@@ -17,6 +18,8 @@ SEARCH_PATH = "/api/v1/search-back/search/reduced"
 # Postal code of every anonymous session (Fase 0 §2). Spec 001 always searches
 # with it (spec-D2); it keys the cache until the real resolution of spec 002 (plan-D4).
 DEFAULT_POSTAL_CODE = "28041"
+
+logger = logging.getLogger(__name__)
 
 
 class DiaSearchScraper:
@@ -53,4 +56,8 @@ class DiaSearchScraper:
         try:
             return DiaSearchResponse.model_validate_json(response.content)
         except ValidationError as error:
+            # Never the body: only where and what kind of failure (spec 004 RF-12, RF-18).
+            invalid_json = any(e["type"] == "json_invalid" for e in error.errors())
+            kind = "invalid_json" if invalid_json else "unexpected_schema"
+            logger.error("unexpected upstream body path=%s kind=%s", SEARCH_PATH, kind)
             raise UpstreamUnavailableError("unexpected search response body") from error

@@ -187,3 +187,32 @@ async def test_retry_lines_name_the_path_without_the_term(caplog) -> None:
     lines = [r.getMessage() for r in caplog.records if r.name.startswith("app.")]
     assert any(f"path={SEARCH_PATH}" in line for line in lines)
     assert not any("secreta" in line or "q=" in line for line in lines)
+
+
+# --- Unexpected bodies are errors (spec 004 RF-12, T7) ---
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("upstream", "kind"),
+    [
+        (httpx.Response(200, html="<html>not json</html>"), "invalid_json"),
+        (httpx.Response(200, json={"cart": {"postal_code": "28041"}}), "unexpected_schema"),
+    ],
+    ids=["html", "no-search-items"],
+)
+async def test_an_unexpected_body_is_an_error_with_path_and_kind(
+    caplog, upstream: httpx.Response, kind: str
+) -> None:
+    respx.get(SEARCH_URL).mock(return_value=upstream)
+
+    with (
+        caplog.at_level("INFO", logger="app.scrapers.dia_search"),
+        pytest.raises(UpstreamUnavailableError),
+    ):
+        await search()
+
+    [record] = [r for r in caplog.records if r.name == "app.scrapers.dia_search"]
+    assert record.levelname == "ERROR"
+    assert f"path={SEARCH_PATH}" in record.getMessage()
+    assert f"kind={kind}" in record.getMessage()

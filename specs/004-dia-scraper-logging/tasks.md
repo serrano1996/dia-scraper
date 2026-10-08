@@ -55,7 +55,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 
 ## PR3 — Fallos propios de Dia
 
-### [ ] T7 — Cuerpos inesperados
+### [x] T7 — Cuerpos inesperados
 - **RED:** `test_dia_search.py`: HTML → `ERROR` con ruta y `kind=invalid_json`; JSON sin `search_items` → `kind=unexpected_schema`. `test_dia_session.py`: respuesta inesperada al `PUT` → `ERROR` con ruta y estado.
 - **GREEN:** logs en `dia_search.py` y `dia_session.py`.
 - **RF:** RF-12

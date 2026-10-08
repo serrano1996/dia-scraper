@@ -7,6 +7,7 @@ reach the logs (constitution #12).
 """
 
 import asyncio
+import logging
 
 import httpx
 from pydantic import ValidationError
@@ -18,6 +19,8 @@ from app.scrapers.dia_search import DEFAULT_POSTAL_CODE
 from app.scrapers.retry import Gate, Sleep, send_with_retry
 
 SAVE_SHIPPING_ADDRESS_PATH = "/api/v1/common-aggregator/save-shipping-address"
+
+logger = logging.getLogger(__name__)
 
 
 class DiaSession:
@@ -74,6 +77,11 @@ class DiaSession:
             return
         if response.status_code == 206 and _is_no_service(response):
             raise PostalCodeNotServedError(postal_code)
+        logger.error(
+            "unexpected upstream answer path=%s status=%d",
+            SAVE_SHIPPING_ADDRESS_PATH,
+            response.status_code,
+        )
         raise UpstreamUnavailableError(
             f"unexpected answer to save-shipping-address: status {response.status_code}"
         )
