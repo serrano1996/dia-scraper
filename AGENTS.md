@@ -9,7 +9,8 @@ API REST asíncrona (FastAPI) que extrae, procesa y sirve productos de Dia
 ## Comandos
 
 ```bash
-pip install -e ".[dev]"          # instalar
+pip install -e ".[dev]"          # instalar (Linux/macOS: mejor -r requirements-dev.lock + --no-deps -e .)
+scripts/lock.sh [--upgrade]      # regenerar los locks (Docker); nunca editarlos a mano
 uvicorn app.main:app --reload    # arrancar en local (http://127.0.0.1:8000/docs)
 pytest                           # tests (nunca llaman a Dia real)
 ruff check . && ruff format .    # lint + formato (obligatorio antes de cada commit)
