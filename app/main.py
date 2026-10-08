@@ -129,6 +129,11 @@ def create_app() -> FastAPI:
         logger.info("page out of range page=%d term=%r", exc.page, request.query_params.get("term"))
         return JSONResponse(status_code=404, content={"detail": "Page out of range"})
 
+    @app.get("/health")
+    async def health() -> dict[str, str]:
+        """Liveness: public and touching neither Redis nor Dia (spec 005 RF-6, spec-D5)."""
+        return {"status": "ok"}
+
     return app
 
 

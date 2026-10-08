@@ -52,7 +52,7 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 - **GREEN:** `redact_params` en el middleware, antes del `repr` y del tope (plan-D6).
 - **RF:** RF-15
 
-### [ ] T7 — `/health`, OpenAPI e integración
+### [x] T7 — `/health`, OpenAPI e integración
 - **RED:** `tests/integration/test_auth.py`: `/health` → `200 {"status": "ok"}` sin token y sin tocar Redis; `/docs` y `/openapi.json` sin token → `200`; sin token: 0 peticiones a Dia y Redis sin claves nuevas, también con un CP nuevo y durante un enfriamiento; `401` con `X-Request-ID`; ni el token recibido ni los configurados en ningún registro (nivel `DEBUG`); el OpenAPI declara `APIKeyHeader` para `/api/v1/products`.
 - **GREEN:** `GET /health` en `main.py`.
 - **RF:** RF-1, RF-6, RF-13, RF-14, RF-16
