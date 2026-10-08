@@ -22,7 +22,7 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 - **GREEN:** `Settings.api_keys` (plan-D1).
 - **RF:** RF-8, RF-11
 
-### [ ] T2 — `is_valid_api_key`
+### [x] T2 — `is_valid_api_key`
 - **RED:** `tests/core/test_security.py`: coincide el exacto; `None`, `""`, con espacios y con otras mayúsculas → `False`; varios tokens → cualquiera vale; un candidato no ASCII (`"ñ"`) → `False` sin excepción; conjunto vacío → siempre `False`.
 - **GREEN:** `app/core/security.py` (plan-D2).
 - **RF:** RF-4, RF-5
