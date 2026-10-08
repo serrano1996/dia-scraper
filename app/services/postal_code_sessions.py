@@ -71,6 +71,8 @@ class PostalCodeSessions:
         # Least recently used first (plan-D5).
         self._entries: OrderedDict[str, _Entry] = OrderedDict()
         self._retired: list[_Retired] = []
+        # Why each postal code last lost its session, to explain the next one (spec 004 RF-16).
+        self._retire_reasons: dict[str, str] = {}
         self._closed = False
         # New sessions (each one a PUT) per window, renewals included (spec 003 RF-7, RF-8).
         self._session_limiter = session_limiter
@@ -98,11 +100,13 @@ class PostalCodeSessions:
             if self._now() - entry.created_at < self._max_age:
                 self._entries.move_to_end(postal_code)
                 return entry.session
-            self._retire(postal_code)
+            self._retire(postal_code, reason="age")
         session, _ = await self._creations.run(postal_code, lambda: self._create(postal_code))
         return session
 
-    def discard(self, postal_code: str, session: PostalCodeSession) -> None:
+    def discard(
+        self, postal_code: str, session: PostalCodeSession, reason: str = "discarded"
+    ) -> None:
         """Drop `session` if it is still the one kept for `postal_code` (spec 002 RF-9).
 
         A newer session of the same postal code is left alone: another search
@@ -110,7 +114,7 @@ class PostalCodeSessions:
         """
         entry = self._entries.get(postal_code)
         if entry is not None and entry.session is session:
-            self._retire(postal_code)
+            self._retire(postal_code, reason=reason)
 
     async def aclose(self) -> None:
         """Close every session, active and retired (RF-14).
@@ -150,8 +154,14 @@ class PostalCodeSessions:
             await _close(session)
             raise UpstreamUnavailableError("session pool closed")
         self._entries[postal_code] = _Entry(session=session, created_at=self._now())
+        previous = self._retire_reasons.pop(postal_code, None)
+        logger.info(
+            "dia session created postal_code=%r reason=%s",
+            postal_code,
+            "new" if previous is None else f"renewal:{previous}",
+        )
         while len(self._entries) > self._max_sessions:
-            self._retire(next(iter(self._entries)))
+            self._retire(next(iter(self._entries)), reason="lru")
         return session
 
     async def _release_new_session(self, slot: str) -> None:
@@ -171,10 +181,12 @@ class PostalCodeSessions:
             )
             raise
 
-    def _retire(self, postal_code: str) -> None:
+    def _retire(self, postal_code: str, *, reason: str) -> None:
         """Stop handing out the session; it is closed later, once no search can be using it."""
         entry = self._entries.pop(postal_code)
         self._retired.append(_Retired(session=entry.session, retired_at=self._now()))
+        self._retire_reasons[postal_code] = reason
+        logger.info("dia session retired postal_code=%r reason=%s", postal_code, reason)
 
     async def _close_expired_retired(self) -> None:
         now = self._now()

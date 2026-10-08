@@ -70,7 +70,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** `search_cache.py`.
 - **RF:** RF-15
 
-### [ ] T10 — Eventos de sesión
+### [x] T10 — Eventos de sesión
 - **RED:** `test_postal_code_sessions.py`: CP nuevo → `INFO` `reason=new`; por edad → retiro `reason=age` y creación `reason=renewal:age`; LRU → retiro `reason=lru`; `discard(cp, s, reason="mismatch")` → retiro `reason=mismatch` y la siguiente creación `renewal:mismatch`. `test_product_service.py`: el servicio descarta con `reason="mismatch"`.
 - **GREEN:** pool y servicio (plan-D10).
 - **RF:** RF-16. **Fin de PR3.**

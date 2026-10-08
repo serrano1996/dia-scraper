@@ -38,7 +38,7 @@ class SessionPool(Protocol):
     """What the service needs from `PostalCodeSessions`."""
 
     async def get(self, postal_code: str) -> PostalCodeSession: ...
-    def discard(self, postal_code: str, session: PostalCodeSession) -> None: ...
+    def discard(self, postal_code: str, session: PostalCodeSession, reason: str = ...) -> None: ...
 
 
 def _utc_now() -> datetime:
@@ -140,7 +140,7 @@ class ProductService:
             answered = raw.cart.postal_code
             if answered == query.postal_code:
                 return raw
-            self._sessions.discard(query.postal_code, session)
+            self._sessions.discard(query.postal_code, session, reason="mismatch")
         logger.warning("postal code mismatch expected=%s got=%s", query.postal_code, answered)
         raise UpstreamUnavailableError("Dia answered for another postal code")
 

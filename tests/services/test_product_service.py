@@ -61,6 +61,7 @@ class FakeSessions:
         self.handed_out: dict[str, FakeSession] = {}
         self.requested: list[str] = []
         self.discarded: list[tuple[str, FakeSession]] = []
+        self.discard_reasons: list[str] = []
         self.errors: dict[str, Exception] = {}
 
     async def get(self, postal_code: str) -> FakeSession:
@@ -69,8 +70,9 @@ class FakeSessions:
             raise self.errors[postal_code]
         return self.handed_out.setdefault(postal_code, FakeSession(postal_code))
 
-    def discard(self, postal_code: str, session: FakeSession) -> None:
+    def discard(self, postal_code: str, session: FakeSession, reason: str = "discarded") -> None:
         self.discarded.append((postal_code, session))
+        self.discard_reasons.append(reason)
         if self.handed_out.get(postal_code) is session:
             del self.handed_out[postal_code]
 
@@ -366,6 +368,7 @@ async def test_a_session_answering_for_another_postal_code_is_replaced_once(
 
     assert len(scraper.calls) == 2
     assert [cp for cp, _ in sessions.discarded] == ["08001"]
+    assert sessions.discard_reasons == ["mismatch"]  # spec 004 RF-16
     stale = sessions.discarded[0][1]
     assert scraper.calls[0]["client"] is stale.client
     assert scraper.calls[1]["client"] is not stale.client

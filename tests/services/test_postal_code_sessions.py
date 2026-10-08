@@ -463,3 +463,72 @@ async def test_a_put_that_reached_dia_keeps_its_slot(error: Exception) -> None:
 
     assert await redis.zcard("ratelimit:dia:new_sessions") == 1
     await pool.aclose()
+
+
+# --- Session events (spec 004 RF-16, T10) ---
+
+POOL_LOGGER = "app.services.postal_code_sessions"
+
+
+def events(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        r.getMessage()
+        for r in caplog.records
+        if r.name == POOL_LOGGER and r.levelno == logging.INFO
+    ]
+
+
+async def test_a_new_postal_code_logs_a_new_session(caplog: pytest.LogCaptureFixture) -> None:
+    pool = make_pool(Factory())
+
+    with caplog.at_level(logging.INFO, logger=POOL_LOGGER):
+        await pool.get("08001")
+
+    assert events(caplog) == ["dia session created postal_code='08001' reason=new"]
+    await pool.aclose()
+
+
+async def test_an_old_session_logs_its_retirement_and_the_renewal(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    clock = Clock()
+    pool = make_pool(Factory(), clock, max_age_seconds=3000)
+    await pool.get("08001")
+    clock.now += 3000
+
+    with caplog.at_level(logging.INFO, logger=POOL_LOGGER):
+        await pool.get("08001")
+
+    assert events(caplog) == [
+        "dia session retired postal_code='08001' reason=age",
+        "dia session created postal_code='08001' reason=renewal:age",
+    ]
+    await pool.aclose()
+
+
+async def test_the_least_used_session_logs_lru(caplog: pytest.LogCaptureFixture) -> None:
+    pool = make_pool(Factory(), max_sessions=1)
+    await pool.get("08001")
+
+    with caplog.at_level(logging.INFO, logger=POOL_LOGGER):
+        await pool.get("41001")
+
+    assert "dia session retired postal_code='08001' reason=lru" in events(caplog)
+    await pool.aclose()
+
+
+async def test_a_discard_logs_its_reason_and_the_next_creation_says_why(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    pool = make_pool(Factory())
+    stale = await pool.get("08001")
+
+    with caplog.at_level(logging.INFO, logger=POOL_LOGGER):
+        pool.discard("08001", stale, reason="mismatch")
+        await pool.get("08001")
+
+    assert events(caplog) == [
+        "dia session retired postal_code='08001' reason=mismatch",
+        "dia session created postal_code='08001' reason=renewal:mismatch",
+    ]
+    await pool.aclose()
