@@ -42,7 +42,7 @@ Formato de commit: `<tipo>(005-dia-scraper-authentication): <descripción en ing
 
 ## PR2 — Logs, `/health`, integración y docs
 
-### [ ] T5 — Logs del rechazo y arranque sin tokens
+### [x] T5 — Logs del rechazo y arranque sin tokens
 - **RED:** rechazo → 1 `WARNING` con `reason=missing|invalid` y `path`, sin el valor; arranque con `API_KEYS` vacía → `WARNING` y `401` en todo `/api/v1`.
 - **GREEN:** log en `require_api_key`; `WARNING` en el `lifespan`.
 - **RF:** RF-9, RF-10, RF-12

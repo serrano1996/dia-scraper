@@ -73,3 +73,45 @@ def test_a_valid_token_with_an_invalid_query_is_a_422(client: TestClient) -> Non
     response = client.get(URL, params={"postal_code": "bad"}, headers={"X-API-Key": TOKEN})
 
     assert response.status_code == 422
+
+
+# --- Logs (spec 005 RF-9, RF-10, RF-12, T5) ---
+
+SECURITY_LOGGER = "app.core.security"
+
+
+@pytest.mark.parametrize(
+    ("headers", "reason"),
+    [({}, "missing"), ({"X-API-Key": "synthetic-wrong-value"}, "invalid")],
+    ids=["missing", "invalid"],
+)
+def test_a_rejection_is_a_warning_with_reason_and_path_never_the_value(
+    client: TestClient, caplog: pytest.LogCaptureFixture, headers: dict[str, str], reason: str
+) -> None:
+    with caplog.at_level("DEBUG"):
+        client.get(URL, params=PARAMS, headers=headers)
+
+    [record] = [r for r in caplog.records if r.name == SECURITY_LOGGER]
+    assert record.levelname == "WARNING"
+    assert f"reason={reason}" in record.getMessage()
+    assert "path='/api/v1/products'" in record.getMessage()
+    assert "synthetic-wrong-value" not in caplog.text
+    assert TOKEN not in caplog.text
+
+
+def test_without_tokens_the_app_starts_rejects_everything_and_warns(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setenv("DIA_BASE_URL", "https://dia.test")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("API_KEYS", " , ,")
+    get_settings.cache_clear()
+    monkeypatch.setattr(main, "create_redis", lambda _settings: FakeAsyncRedis())
+
+    with caplog.at_level("INFO"), TestClient(create_app()) as client:
+        response = client.get(URL, params=PARAMS, headers={"X-API-Key": "anything"})
+
+    assert response.status_code == 401
+    warnings = [r for r in caplog.records if r.name == "app.main" and r.levelname == "WARNING"]
+    assert any("no API_KEYS configured" in r.getMessage() for r in warnings)
+    get_settings.cache_clear()

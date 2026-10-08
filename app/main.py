@@ -41,6 +41,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     # First, so everything below logs with the format and level (spec 004 RF-1).
     configure_logging(settings.log_level)
+    if not settings.api_keys:
+        # Fail closed, but loudly: otherwise "everything answers 401" is a mystery
+        # after a deploy (spec 005 RF-9, RF-10, spec-D2).
+        logger.warning("no API_KEYS configured: every request to /api/v1 will be rejected")
     async with AsyncExitStack() as stack:
         # Each client is closed even if building the next one fails.
         redis_client = create_redis(settings)
