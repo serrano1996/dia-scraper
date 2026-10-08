@@ -60,7 +60,7 @@ Formato de commit: `<tipo>(004-dia-scraper-logging): <descripción en inglés> (
 - **GREEN:** logs en `dia_search.py` y `dia_session.py`.
 - **RF:** RF-12
 
-### [ ] T8 — Descartes del mapper
+### [x] T8 — Descartes del mapper
 - **RED:** `test_map_search.py`: 1 roto de 3 → 1 `WARNING` con `discarded=1` y el id; 3 de 3 → 1 `ERROR`; sin resultados → ningún registro; duplicados no cuentan como descartes.
 - **GREEN:** `map_search` (plan-D9).
 - **RF:** RF-13, RF-14

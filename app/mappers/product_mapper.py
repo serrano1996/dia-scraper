@@ -3,7 +3,7 @@
 import logging
 from types import MappingProxyType
 
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from app.models.dia import DiaProduct, DiaSearchResponse
 from app.models.product import Product
@@ -65,13 +65,41 @@ def map_search(raw: DiaSearchResponse, *, base_url: str) -> list[Product]:
     """
     products: list[Product] = []
     seen: set[str] = set()
+    discarded: list[str | None] = []
     for item in raw.search_items:
         try:
             product = DiaProduct.model_validate(item)
         except ValidationError:
+            discarded.append(_raw_object_id(item))
             continue
         if product.object_id in seen:
             continue
         seen.add(product.object_id)
         products.append(map_product(product, base_url=base_url))
+    _log_discarded(discarded, total=len(raw.search_items))
     return products
+
+
+def _raw_object_id(item: JsonValue) -> str | None:
+    """The `object_id` of a broken item, when it can be read at all."""
+    if isinstance(item, dict):
+        object_id = item.get("object_id")
+        if isinstance(object_id, str):
+            return object_id
+    return None
+
+
+def _log_discarded(discarded: list[str | None], *, total: int) -> None:
+    """One line per response, never one per product (spec 004 RF-13, RF-14)."""
+    if not discarded:
+        return
+    ids = [object_id for object_id in discarded if object_id is not None]
+    if len(discarded) == total:
+        # Not "no results": Dia sent products and none fits. A format change (spec-D4).
+        logger.error(
+            "every product discarded discarded=%d total=%d ids=%r", len(discarded), total, ids
+        )
+    else:
+        logger.warning(
+            "products discarded discarded=%d total=%d ids=%r", len(discarded), total, ids
+        )

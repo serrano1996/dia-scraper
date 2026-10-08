@@ -66,3 +66,69 @@ def test_map_search_discards_items_that_are_not_objects() -> None:
     items = [*leche_items(), "not a product", None, 42]
 
     assert [p.id for p in map_search(leche_with_items(items), base_url=BASE_URL)] == LECHE_IDS
+
+
+# --- Logs of discarded products (spec 004 RF-13, RF-14, T8) ---
+
+MAPPER = "app.mappers.product_mapper"
+
+
+def mapper_records(caplog: pytest.LogCaptureFixture) -> list:
+    return [r for r in caplog.records if r.name == MAPPER]
+
+
+def test_some_discarded_products_are_one_warning_with_their_ids(caplog) -> None:
+    items = leche_items()
+    items[1]["prices"]["price"] = "abc"
+
+    with caplog.at_level("INFO", logger=MAPPER):
+        map_search(leche_with_items(items), base_url=BASE_URL)
+
+    [record] = mapper_records(caplog)
+    assert record.levelname == "WARNING"
+    assert "discarded=1" in record.getMessage()
+    assert "total=3" in record.getMessage()
+    assert "'608P6'" in record.getMessage()
+
+
+def test_every_product_discarded_is_an_error(caplog) -> None:
+    items = leche_items()
+    for item in items:
+        del item["display_name"]
+
+    with caplog.at_level("INFO", logger=MAPPER):
+        products = map_search(leche_with_items(items), base_url=BASE_URL)
+
+    assert products == []
+    [record] = mapper_records(caplog)
+    assert record.levelname == "ERROR"
+    assert "discarded=3" in record.getMessage()
+
+
+def test_no_results_log_nothing(caplog) -> None:
+    raw = DiaSearchResponse.model_validate(load_fixture("dia_search_no_results.json"))
+
+    with caplog.at_level("INFO", logger=MAPPER):
+        map_search(raw, base_url=BASE_URL)
+
+    assert mapper_records(caplog) == []
+
+
+def test_duplicates_are_not_discards(caplog) -> None:
+    items = leche_items()
+
+    with caplog.at_level("INFO", logger=MAPPER):
+        map_search(leche_with_items([*items, copy.deepcopy(items[0])]), base_url=BASE_URL)
+
+    assert mapper_records(caplog) == []
+
+
+def test_items_without_a_readable_id_are_counted(caplog) -> None:
+    items = [*leche_items(), "not a product"]
+
+    with caplog.at_level("INFO", logger=MAPPER):
+        map_search(leche_with_items(items), base_url=BASE_URL)
+
+    [record] = mapper_records(caplog)
+    assert "discarded=1" in record.getMessage()
+    assert "ids=[]" in record.getMessage()
