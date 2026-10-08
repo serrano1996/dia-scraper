@@ -1,6 +1,6 @@
 # Plan 007 — CI y dependencias fijadas
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-08)
 - **Fecha:** 2026-10-08
 - **Spec:** [spec.md](spec.md) (aprobada). Sus decisiones se citan como **spec-D1…spec-D5**; las de este plan, **D1…**.
 - **Base:** `alcampo-scraper/scripts/lock.sh`, `.github/workflows/ci.yml`, `tests/infra/test_lockfiles.py`, `test_ci_workflow.py` (sus specs 006 y 014).

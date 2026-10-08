@@ -1,6 +1,6 @@
 # Tasks 007 — CI y dependencias fijadas
 
-- **Estado:** borrador, pendiente de revisión
+- **Estado:** aprobado (2026-10-08)
 - **Spec:** [spec.md](spec.md) · **Plan:** [plan.md](plan.md) (decisiones de diseño citadas como plan-Dn)
 - **Entrega:** 1 PR.
 
@@ -15,7 +15,7 @@ Formato de commit: `<tipo>(007-dia-scraper-ci-and-lockfile): <descripción en in
 
 ---
 
-### [ ] T1 — Lockfiles
+### [x] T1 — Lockfiles
 - **RED:** `tests/infra/test_lockfiles.py` (plan-D6) falla: no hay locks.
 - **GREEN:** `scripts/lock.sh` (plan-D1, D2) y ejecutarlo (necesita Docker y acceso a PyPI) para generar `requirements.lock` y `requirements-dev.lock`.
 - **RF:** RF-1, RF-2, RF-3
