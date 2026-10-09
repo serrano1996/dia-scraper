@@ -18,7 +18,7 @@ cp .env.example .env
 uvicorn app.main:app --reload       # http://127.0.0.1:8000/docs
 ```
 
-Necesita un Redis accesible en `REDIS_URL` y al menos un token en `API_KEYS`.
+Necesita al menos un token en `API_KEYS` y un Redis en `REDIS_URL` (sin él funciona degradada: ver [Sin Redis](#sin-redis)).
 
 ### Con Docker
 
@@ -64,7 +64,7 @@ un bloqueo de Akamai.
   se cambian los clientes y se quita el viejo.
 - Sin ningún token configurado la API arranca, avisa en el log y responde `401` a todo
   `/api/v1/`.
-- Públicos: `/health` (`{"status": "ok"}`, no toca Redis ni Dia), `/docs`, `/redoc` y
+- Públicos: `/health` y `/ready` (ver [Sin Redis](#sin-redis)), `/docs`, `/redoc` y
   `/openapi.json`.
 - Los tokens nunca aparecen en los logs; si alguien manda uno en la URL (`?api_key=…`, `?token=…`,
   `?key=…`), no autentica y en el log sale como `'***'`.
@@ -172,6 +172,28 @@ Cada enfriamiento y cada límite agotado deja un `WARNING` en el log. Los límit
 estimación prudente, no un umbral medido: Dia nunca bloqueó por ritmo en la investigación inicial.
 Ajústalos con esos avisos.
 
+### Sin Redis
+
+Si Redis cae o se cuelga, la API sigue respondiendo con el servicio degradado:
+
+- **Cada operación con Redis espera como mucho `REDIS_TIMEOUT_SECONDS`.** Tras el primer fallo,
+  Redis se salta durante `REDIS_CIRCUIT_OPEN_SECONDS` y todo pasa directamente a los respaldos;
+  luego se vuelve a probar. Así solo la primera búsqueda paga el timeout.
+- **Búsquedas sin cache:** responden `200` desde Dia, pero cada una es una petición a Dia.
+- **Códigos postales sin servicio:** no se recuerdan, así que se vuelve a preguntar a Dia.
+- **Enfriamiento y límites en memoria de cada proceso**, con las mismas reglas. La coordinación
+  entre instancias se pierde: con varias instancias, el tráfico total hacia Dia puede llegar a
+  `instancias × DIA_RATE_LIMIT`. Un enfriamiento empezado sin Redis se respeta hasta que vence,
+  aunque Redis vuelva antes.
+- **Cuando Redis vuelve**, se usa otra vez y la cache anterior sigue valiendo.
+
+Dos sondas públicas, sin `X-API-Key`:
+
+| Sonda | Responde | Para qué |
+|---|---|---|
+| `GET /health` | siempre `200 {"status": "ok"}`; no toca Redis ni Dia | ¿el proceso vive? (el `HEALTHCHECK` de Docker: reiniciar no arregla Redis) |
+| `GET /ready` | `200 {"status": "ready", "redis": "ok"}` o `503 {"status": "unavailable", "redis": "unreachable"}`; nunca llama a Dia | ¿esta instancia llega a Redis? |
+
 ## Logs
 
 Texto plano a `stderr`, una línea por evento:
@@ -189,9 +211,11 @@ Texto plano a `stderr`, una línea por evento:
 | Evento | Nivel |
 |---|---|
 | Inicio y fin de cada petición (con código y duración) | `INFO` |
+| Redis vuelve a responder (`redis circuit closed`) | `INFO` |
 | `404` (código postal sin servicio, página fuera de rango) | `INFO` |
 | Sesión de Dia creada o retirada, con su motivo | `INFO` |
 | Reintento | `WARNING` |
+| Redis falla: se salta durante `REDIS_CIRCUIT_OPEN_SECONDS` (`redis circuit open`, con el tipo de error) | `WARNING` |
 | Enfriamiento activo, límite de salida agotado o búsqueda bloqueada (`502`; el `ERROR` es el del bloqueo) | `WARNING` |
 | Productos descartados por formato, cache corrupta, unidad desconocida, discrepancia de código postal | `WARNING` |
 | Bloqueo de Akamai (con la ruta y el estado del enfriamiento) | `ERROR` |
@@ -228,6 +252,8 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
 | `NEW_SESSION_WINDOW_SECONDS` | `600` | ventana del límite anterior |
 | `RETRY_JITTER_MAX_S` | `0.3` | aleatorio máximo sumado a cada espera entre reintentos (`0` = sin aleatorio) |
 | `API_KEYS` | vacía (nadie entra) | tokens válidos para `X-API-Key`, separados por comas |
+| `REDIS_TIMEOUT_SECONDS` | `2` | máximo para conectar con Redis y para cada operación |
+| `REDIS_CIRCUIT_OPEN_SECONDS` | `10` | tras un fallo de Redis, cuánto se salta antes de volver a probar (`0` = nunca se salta) |
 
 ## Limitaciones conocidas
 
@@ -242,7 +268,8 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
 - **Dependencia de Akamai.** Dia está detrás de Akamai Bot Manager. La API envía un perfil
   coherente de Chrome 155; si Akamai endurece sus reglas, todas las búsquedas responderán `502`.
   El perfil se revisa cada ~3 meses junto con el de Alcampo (`app/scrapers/http_client.py`).
-- **Sin Redis la API falla** (`500`): la degradación ante Redis caído no está en el MVP.
+- **Sin Redis, cada instancia va por su cuenta**: sin cache, y con límites y enfriamiento locales
+  (ver [Sin Redis](#sin-redis)).
 
 ## Desarrollo
 

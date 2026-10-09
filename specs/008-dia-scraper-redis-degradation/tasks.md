@@ -47,7 +47,7 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 - **Nota:** los tests usan el CP 28041, el predeterminado de Dia: su sesión no hace `PUT`, así que cada búsqueda es una sola petición y basta `DIA_RATE_LIMIT=1` (el borrador decía 2 suponiendo un `PUT`). En el RED, cuatro tests de búsqueda ya pasaban: los respaldos de T3–T5 funcionan con el circuito desactivado por defecto; fallaban los que exigen un único circuito compartido y `/ready`.
 - **RF:** RF-3, RF-9, RF-10, H1, H2
 
-### [ ] T7 — Docs
+### [x] T7 — Docs
 - **Hacer:** README: qué pasa sin Redis (caches saltadas, protecciones locales, tráfico `instancias × límite`), `/ready` frente a `/health`, las dos variables. Dar al usuario las líneas de `.env.example` (`REDIS_TIMEOUT_SECONDS=2`, `REDIS_CIRCUIT_OPEN_SECONDS=10`).
 - **RF:** RNF-4
 
