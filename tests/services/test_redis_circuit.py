@@ -1,5 +1,6 @@
 """Spec 008 RF-2, RF-3, RF-9: the circuit breaker in front of Redis (plan-D2, plan-D3)."""
 
+import asyncio
 import logging
 
 import pytest
@@ -174,3 +175,66 @@ async def test_disabled_by_default() -> None:
             await circuit.call(failing)
 
     assert failing.calls == 2
+
+
+# --- Review T9: one probe at a time ---
+
+
+async def test_after_open_seconds_only_one_call_probes_redis(
+    circuit: RedisCircuitBreaker, clock: Clock, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Against a hung Redis every probe pays the timeout: only one may pay it (RNF-2).
+    with pytest.raises(RedisError):
+        await circuit.call(Operation(RedisConnectionError("down")))
+    clock.now += 10
+    caplog.set_level(logging.WARNING, logger="app.services.redis_circuit")
+    caplog.clear()
+    hung = Operation(RedisTimeoutError("hung"))
+
+    async def slow_probe() -> str:
+        await asyncio.sleep(0.01)
+        return await hung()
+
+    results = await asyncio.gather(
+        *[circuit.call(slow_probe) for _ in range(20)], return_exceptions=True
+    )
+
+    assert hung.calls == 1
+    assert sum(isinstance(r, RedisCircuitOpenError) for r in results) == 19
+    assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 1
+
+
+async def test_while_a_probe_runs_the_circuit_stays_open_for_others(
+    circuit: RedisCircuitBreaker, clock: Clock
+) -> None:
+    with pytest.raises(RedisError):
+        await circuit.call(Operation(RedisConnectionError("down")))
+    clock.now += 10
+    release = asyncio.Event()
+
+    async def probe() -> str:
+        await release.wait()
+        return "pong"
+
+    task = asyncio.create_task(circuit.call(probe))
+    await asyncio.sleep(0)
+    with pytest.raises(RedisCircuitOpenError):
+        await circuit.call(Operation())
+    release.set()
+
+    assert await task == "pong"
+    assert await circuit.call(Operation()) == "pong"  # closed by the probe
+
+
+async def test_a_probe_that_ends_without_a_redis_answer_lets_the_next_call_probe(
+    circuit: RedisCircuitBreaker, clock: Clock
+) -> None:
+    # A bug or a cancellation in the probe says nothing about Redis: try again next time.
+    with pytest.raises(RedisError):
+        await circuit.call(Operation(RedisConnectionError("down")))
+    clock.now += 10
+
+    with pytest.raises(ValueError):
+        await circuit.call(Operation(ValueError("bug")))
+
+    assert await circuit.call(Operation()) == "pong"

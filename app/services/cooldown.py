@@ -7,7 +7,8 @@ so only requests already in flight can be blocked again.
 
 Without Redis each process keeps a local cooldown with the same rules (spec 008
 RF-6, plan-D5). It is checked before Redis, so a cooldown started while Redis was
-down still holds once Redis is back without the key (RF-8).
+down still holds once Redis is back without the key (RF-8). Every block also
+starts it, so one started in Redis still holds if Redis dies after (review T9).
 """
 
 import logging
@@ -75,6 +76,7 @@ class AkamaiCooldown:
 
     async def activate(self) -> bool:
         """Start the cooldown; `False` if one was already running (it is left as is)."""
+        started_locally = self._local.activate(seconds=self._seconds)
         try:
             return bool(
                 await self._circuit.call(
@@ -83,4 +85,4 @@ class AkamaiCooldown:
             )
         except RedisError:
             logger.debug("redis unavailable op=cooldown.activate")
-            return self._local.activate(seconds=self._seconds)
+            return started_locally

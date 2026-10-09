@@ -8,8 +8,10 @@ with `RedisCircuitOpenError`, so each repository goes straight to its fallback.
 `RedisCircuitOpenError` is a `RedisError`: fallbacks catch that one type.
 
 After the period the next operation probes Redis: success closes the circuit,
-failure opens it again. Concurrent operations may probe at the same time; they
-are few and each is bounded by the Redis timeout (RF-1).
+failure opens it again. Only one probe runs at a time; meanwhile the others still
+see the circuit open, so against a hung Redis one request pays the timeout, not
+every request in flight (review T9). A probe that ends without an answer from
+Redis (a bug, a cancellation) lets the next call probe.
 
 The circuit is the only one that warns (spec-D5): a WARNING when it opens, an
 INFO when it closes. Logs carry the error type, never its message, which may
@@ -43,17 +45,24 @@ class RedisCircuitBreaker:
         self._open_seconds = open_seconds
         self._now = now
         self._open_until: float | None = None
+        self._probing = False
 
     async def call(self, operation: Callable[[], Awaitable[T]]) -> T:
         """Run `operation` unless the circuit is open; only `RedisError` opens it."""
-        if self._open_until is not None and self._now() < self._open_until:
-            raise RedisCircuitOpenError("redis circuit open")
-        probing = self._open_until is not None
+        open_until = self._open_until
+        probing = open_until is not None
+        if open_until is not None:
+            if self._probing or self._now() < open_until:
+                raise RedisCircuitOpenError("redis circuit open")
+            self._probing = True
         try:
             result = await operation()
         except RedisError as exc:
             self._failed(exc)
             raise
+        finally:
+            if probing:
+                self._probing = False
         if probing:
             self._open_until = None
             logger.info("redis circuit closed")

@@ -68,3 +68,27 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 
   Fueron **3 búsquedas reales** a Dia, una más de las 1–2 previstas: la tercera comprobaba que sin Redis no hay cache. Sin `.env` en el repo, la API recibió `DIA_BASE_URL` y un token aleatorio de un solo uso por un override temporal de compose fuera del repo, borrado al terminar.
 
+
+---
+
+## Revisión con contexto nuevo (2026-10-09)
+
+Revisión adversarial de `c1f2b47..HEAD` antes del PR: 0 CRITICAL, 4 WARNING, 4 SUGGESTION. Confirmados reproduciéndolos: (1) pasado el periodo del circuito, **todas** las llamadas concurrentes prueban Redis (20 de 20), y contra un Redis colgado cada una paga el timeout, contra RNF-2; (2) si el `ZREM` que devuelve el hueco rechazado falla, `acquire` cae a la ventana local vacía y **admite una petición que Redis había rechazado**.
+
+### [x] T9 — Correcciones de la revisión
+- **RED:**
+  - `test_redis_circuit.py`: pasado el periodo, solo una llamada prueba Redis y las concurrentes siguen viendo el circuito abierto; una prueba fallida da un solo `WARNING`.
+  - `test_rate_limiter.py`: con el `ZREM` de la devolución fallando, la petición sigue rechazada; el rechazo de Redis ya no se lanza dentro de la operación del circuito (una prueba que acaba en "límite agotado" cierra el circuito, porque Redis respondió).
+  - `test_cooldown.py`: un enfriamiento activado en Redis sigue activo en el proceso si Redis cae después.
+  - `redis_doubles.py`: los comandos fallan al esperarlos (`await`), como el cliente real, y `pipeline()` devuelve un pipeline cuyo `execute` falla.
+  - `test_main.py`: el test del socket mudo con un margen holgado (`< 2.5 s` frente a los ~5 s sin timeout), para no fallar en un runner lento.
+- **GREEN:** `redis_circuit.py` (una sola prueba a la vez), `rate_limiter.py` (`_acquire_in_redis` devuelve si admite; la devolución va aparte y su fallo no admite), `cooldown.py` (activar en Redis también activa en local).
+- **Docs:** README ("solo una petición por periodo paga el timeout"); docstring del limitador: un hueco cuyo pipeline se ejecutó pero cuya respuesta se perdió cuenta en Redis y en local hasta que vence la ventana (aceptado, acotado).
+- **Hecho así:**
+  - Los dobles más realistas no rompieron ningún test.
+  - El test de T4 `test_with_redis_up_nothing_is_kept_locally`, que fijaba lo contrario, pasa a `test_another_instance_sees_only_the_shared_key`.
+  - **Aceptado:** el proceso que ve un bloqueo arranca su enfriamiento local aunque Redis diga que otra instancia ya había empezado uno. En ese proceso la pausa puede durar hasta `AKAMAI_COOLDOWN_SECONDS` desde su propio bloqueo, un poco más que la del resto; nunca más corta.
+- **Hallazgos no corregidos:**
+  - El `aclose` de Redis al apagar no va por el circuito: comprobado que `aclose()` no lanza tras un fallo contra un puerto muerto (`127.0.0.1:1`).
+  - El `.venv` local es Python 3.14, mientras que la CI y la imagen usan 3.11: los tests pasan en ambos.
+

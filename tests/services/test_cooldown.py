@@ -127,11 +127,28 @@ async def test_a_local_cooldown_survives_redis_coming_back_without_the_key() -> 
     assert await cooldown.is_active() is False
 
 
-async def test_with_redis_up_nothing_is_kept_locally(redis: FakeAsyncRedis) -> None:
-    # The shared key is the cooldown: once Redis expires it, it is over everywhere.
-    cooldown = AkamaiCooldown(redis, seconds=300)
-    await cooldown.activate()
+async def test_another_instance_sees_only_the_shared_key(redis: FakeAsyncRedis) -> None:
+    # The process that saw the block also keeps it locally (review T9); the
+    # others rely on the shared key, which ends the cooldown for them.
+    await AkamaiCooldown(redis, seconds=300).activate()
+    other = AkamaiCooldown(redis, seconds=300)
+    assert await other.is_active() is True
 
     await redis.delete(COOLDOWN_KEY)
 
+    assert await other.is_active() is False
+
+
+async def test_a_cooldown_started_in_redis_survives_redis_going_down() -> None:
+    # Review T9: an Akamai block must not be forgotten because Redis died after it.
+    clock = Clock()
+    redis = SwitchableRedis()
+    cooldown = AkamaiCooldown(redis, seconds=300, now=clock)
+    assert await cooldown.activate() is True
+
+    redis.down = True
+    clock.now += 100
+
+    assert await cooldown.is_active() is True
+    clock.now += 200
     assert await cooldown.is_active() is False

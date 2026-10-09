@@ -178,13 +178,14 @@ Si Redis cae o se cuelga, la API sigue respondiendo con el servicio degradado:
 
 - **Cada operación con Redis espera como mucho `REDIS_TIMEOUT_SECONDS`.** Tras el primer fallo,
   Redis se salta durante `REDIS_CIRCUIT_OPEN_SECONDS` y todo pasa directamente a los respaldos;
-  luego se vuelve a probar. Así solo la primera búsqueda paga el timeout.
+  luego una sola petición vuelve a probar mientras las demás siguen con los respaldos. Así, con
+  Redis colgado, solo una petición por periodo paga el timeout.
 - **Búsquedas sin cache:** responden `200` desde Dia, pero cada una es una petición a Dia.
 - **Códigos postales sin servicio:** no se recuerdan, así que se vuelve a preguntar a Dia.
 - **Enfriamiento y límites en memoria de cada proceso**, con las mismas reglas. La coordinación
   entre instancias se pierde: con varias instancias, el tráfico total hacia Dia puede llegar a
-  `instancias × DIA_RATE_LIMIT`. Un enfriamiento empezado sin Redis se respeta hasta que vence,
-  aunque Redis vuelva antes.
+  `instancias × DIA_RATE_LIMIT`. La instancia que sufre un bloqueo lo recuerda también en memoria:
+  se respeta hasta que vence aunque Redis caiga o vuelva entretanto.
 - **Cuando Redis vuelve**, se usa otra vez y la cache anterior sigue valiendo.
 
 Dos sondas públicas, sin `X-API-Key`:

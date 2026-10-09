@@ -2,6 +2,7 @@ import logging
 
 import pytest
 from fakeredis import FakeAsyncRedis
+from redis.exceptions import RedisError
 
 from app.exceptions import OutboundRateLimitedError
 from app.services.rate_limiter import LocalRateLimiter, RateLimiter
@@ -207,3 +208,47 @@ class SwitchableBroken:
         if self.down:
             raise DOWN
         return getattr(self.fake, name)
+
+
+# --- Review T9 ---
+
+
+async def test_a_refusal_holds_even_if_giving_the_slot_back_fails(
+    redis: FakeAsyncRedis,
+) -> None:
+    # Redis already answered "over the limit": the local window must not admit it.
+    clock = Clock()
+    rate = broken_limiter(redis, clock, limit=1)
+    await rate.acquire()
+
+    async def failing_zrem(*args: object) -> int:
+        raise DOWN
+
+    redis.zrem = failing_zrem  # type: ignore[method-assign]
+
+    with pytest.raises(OutboundRateLimitedError):
+        await rate.acquire()
+
+
+async def test_a_refusal_from_redis_closes_a_probing_circuit(redis: FakeAsyncRedis) -> None:
+    # Redis answered the probe: the circuit closes, even if the answer is "no".
+    clock = Clock()
+    circuit = RedisCircuitBreaker(open_seconds=10, now=clock)
+    rate = RateLimiter(
+        redis,
+        key="ratelimit:t",
+        name="test",
+        limit=1,
+        window_seconds=60,
+        now=clock,
+        circuit=circuit,
+    )
+    await rate.acquire()
+    with pytest.raises(RedisError):
+        await circuit.call(BrokenRedis(DOWN).ping)
+    clock.now += 10
+
+    with pytest.raises(OutboundRateLimitedError):
+        await rate.acquire()
+
+    assert await circuit.call(redis.ping) is True  # not open

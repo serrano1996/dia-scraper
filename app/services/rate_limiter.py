@@ -103,17 +103,32 @@ class RateLimiter:
         a separate ZREM, so a concurrent acquirer can be refused transiently.
         Doing it atomically with Redis' own clock needs a Lua script, which
         fakeredis only runs with an extra dependency (RNF-1).
+
+        Without Redis (spec 008 review T9): Redis' verdict stands once given, even
+        if giving the refused slot back fails. A pipeline that ran in Redis but
+        whose reply was lost leaves its slot counted in Redis and locally until
+        the window ends: accepted, bounded by the window.
         """
         if self._limit == 0:
             return ""
         now = self._now()
         member = uuid.uuid4().hex
         try:
-            await self._circuit.call(lambda: self._acquire_in_redis(now, member))
+            admitted = await self._circuit.call(lambda: self._acquire_in_redis(now, member))
         except RedisError:
             # The circuit already warned (spec 008 spec-D5).
             logger.debug("redis unavailable op=rate_limit.acquire limit=%s", self._name)
             self._local.acquire(now=now, slot=member)
+            return member
+        if not admitted:
+            # A refused request must not consume quota, or a burst of refusals
+            # would keep the limit exhausted forever. If that fails, the slot
+            # leaves with the window.
+            try:
+                await self._circuit.call(lambda: self._redis.zrem(self._key, member))
+            except RedisError:
+                logger.debug("redis unavailable op=rate_limit.refund limit=%s", self._name)
+            raise OutboundRateLimitedError(f"outbound limit reached: {self._name}")
         return member
 
     async def release(self, slot: str) -> None:
@@ -129,7 +144,8 @@ class RateLimiter:
         except RedisError:
             logger.debug("redis unavailable op=rate_limit.release limit=%s", self._name)
 
-    async def _acquire_in_redis(self, now: float, member: str) -> None:
+    async def _acquire_in_redis(self, now: float, member: str) -> bool:
+        """Add `member` to the window; whether it fits within the limit."""
         async with self._redis.pipeline(transaction=True) as pipe:
             # An entry exactly `window` seconds old has left the window.
             pipe.zremrangebyscore(self._key, "-inf", now - self._window)
@@ -137,8 +153,4 @@ class RateLimiter:
             pipe.zcard(self._key)
             pipe.expire(self._key, self._window)
             _, _, count, _ = await pipe.execute()
-        if count > self._limit:
-            # A refused request must not consume quota, or a burst of refusals
-            # would keep the limit exhausted forever.
-            await self._redis.zrem(self._key, member)
-            raise OutboundRateLimitedError(f"outbound limit reached: {self._name}")
+        return bool(count <= self._limit)

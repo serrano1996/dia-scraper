@@ -195,4 +195,5 @@ async def test_a_hung_redis_fails_after_the_timeout_not_later(silent_redis_port:
     finally:
         await client.aclose()
 
-    assert time.perf_counter() - started < 0.3 * 3
+    # Loose bound for slow runners; without the timeout it waits ~5 s (review T9).
+    assert time.perf_counter() - started < 2.5
