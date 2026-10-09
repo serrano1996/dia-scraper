@@ -25,6 +25,7 @@ Formato de commit: `<tipo>(009-dia-scraper-alcampo-review-fixes): <descripción 
 - **GREEN:** `lock.sh` (plan-D1).
 - **RF:** RF-2
 
-### [ ] T3 — Test del circuito determinista y docs (F3, F4)
+### [x] T3 — Test del circuito determinista y docs (F3, F4)
 - **Hacer:** `Event` en el test del circuito (refactor de test: debe seguir en verde, y en rojo si se quita el indicador `_probing`); README: la normalización de la redacción y la limitación conocida de uvicorn.
 - **RF:** RF-3, RF-4
+- **Comprobado:** con el `Event`, el test pasa; quitando el indicador `_probing` del circuito falla (mutación deshecha). README: la redacción por subcadena y separadores (la frase seguía nombrando solo tres nombres exactos) y la limitación de uvicorn.

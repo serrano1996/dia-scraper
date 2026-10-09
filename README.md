@@ -66,8 +66,10 @@ un bloqueo de Akamai.
   `/api/v1/`.
 - Públicos: `/health` y `/ready` (ver [Sin Redis](#sin-redis)), `/docs`, `/redoc` y
   `/openapi.json`.
-- Los tokens nunca aparecen en los logs; si alguien manda uno en la URL (`?api_key=…`, `?token=…`,
-  `?key=…`), no autentica y en el log sale como `'***'`.
+- Los tokens nunca aparecen en los logs; si alguien manda uno en la URL, no autentica y en el
+  log sale como `'***'` todo parámetro cuyo nombre contenga `key`, `token`, `secret`, `auth` o
+  `pass`, sin distinguir mayúsculas ni separadores (`?api_key=…`, `?access_token=…`, `?to.ken=…`;
+  también algún inocente como `keyword`).
 
 La longitud no se valida: genera tokens largos y aleatorios, por ejemplo con
 
@@ -271,6 +273,10 @@ Variables de entorno (o `.env`); ver [`.env.example`](.env.example).
   El perfil se revisa cada ~3 meses junto con el de Alcampo (`app/scrapers/http_client.py`).
 - **Sin Redis, cada instancia va por su cuenta**: sin cache, y con límites y enfriamiento locales
   (ver [Sin Redis](#sin-redis)).
+- **Un error con la respuesta ya empezada deja también el traceback de uvicorn**, con el mensaje
+  de la excepción (`Exception in ASGI application`). La API registra solo el tipo y los frames,
+  pero tiene que relanzar el error para que el servidor corte la conexión. Es raro (la API no hace
+  streaming) y solo lo produce un fallo nuestro, no un valor del cliente (spec 009).
 
 ## Desarrollo
 

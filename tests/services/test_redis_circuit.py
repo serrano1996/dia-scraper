@@ -210,14 +210,16 @@ async def test_while_a_probe_runs_the_circuit_stays_open_for_others(
     with pytest.raises(RedisError):
         await circuit.call(Operation(RedisConnectionError("down")))
     clock.now += 10
+    started = asyncio.Event()
     release = asyncio.Event()
 
     async def probe() -> str:
+        started.set()
         await release.wait()
         return "pong"
 
     task = asyncio.create_task(circuit.call(probe))
-    await asyncio.sleep(0)
+    await started.wait()  # the probe is in flight, whatever the scheduler (spec 009 RF-3)
     with pytest.raises(RedisCircuitOpenError):
         await circuit.call(Operation())
     release.set()
