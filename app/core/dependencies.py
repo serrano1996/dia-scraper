@@ -19,8 +19,8 @@ def get_product_service(request: Request) -> ProductService:
     res = resources(request.app)
     return ProductService(
         scraper=DiaSearchScraper(settings=res.settings, gate=res.gate),
-        cache=SearchCacheRepository(res.redis),
-        not_served=NotServedRepository(res.redis),
+        cache=SearchCacheRepository(res.redis, circuit=res.circuit),
+        not_served=NotServedRepository(res.redis, circuit=res.circuit),
         sessions=res.sessions,
         settings=res.settings,
     )

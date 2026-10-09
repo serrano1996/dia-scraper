@@ -7,11 +7,12 @@ from contextlib import AsyncExitStack, asynccontextmanager
 import redis.asyncio as redis
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from redis.exceptions import RedisError
 
 from app.api.v1.products import router as products_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
-from app.core.state import AppResources
+from app.core.state import AppResources, resources
 from app.exceptions import (
     PageOutOfRangeError,
     PostalCodeNotServedError,
@@ -26,6 +27,7 @@ from app.services.cooldown import AkamaiCooldown
 from app.services.outbound import OutboundGate
 from app.services.postal_code_sessions import PostalCodeSessions
 from app.services.rate_limiter import RateLimiter
+from app.services.redis_circuit import RedisCircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -58,16 +60,22 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # Each client is closed even if building the next one fails.
         redis_client = create_redis(settings)
         stack.push_async_callback(redis_client.aclose)
+        # One circuit for every use of Redis: after a failure, all of them skip it
+        # at once and use their fallbacks (spec 008 RF-3, plan-D2).
+        circuit = RedisCircuitBreaker(open_seconds=settings.redis_circuit_open_seconds)
         # One gate per process: every request to Dia, from the scraper or from a
         # session's PUT, goes through it (spec 003 plan-D1, plan-D8).
         gate = OutboundGate(
-            cooldown=AkamaiCooldown(redis_client, seconds=settings.akamai_cooldown_seconds),
+            cooldown=AkamaiCooldown(
+                redis_client, seconds=settings.akamai_cooldown_seconds, circuit=circuit
+            ),
             limiter=RateLimiter(
                 redis_client,
                 key="ratelimit:dia",
                 name="dia",
                 limit=settings.dia_rate_limit,
                 window_seconds=settings.dia_rate_window_seconds,
+                circuit=circuit,
             ),
         )
         # Each session builds its own HTTP client, with its own cookie jar (spec 002 plan-D1).
@@ -83,11 +91,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 name="new_sessions",
                 limit=settings.new_session_limit,
                 window_seconds=settings.new_session_window_seconds,
+                circuit=circuit,
             ),
         )
         stack.push_async_callback(sessions.aclose)
         app.state.resources = AppResources(
-            settings=settings, redis=redis_client, sessions=sessions, gate=gate
+            settings=settings, redis=redis_client, circuit=circuit, sessions=sessions, gate=gate
         )
         yield
 
@@ -142,6 +151,25 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         """Liveness: public and touching neither Redis nor Dia (spec 005 RF-6, spec-D5)."""
         return {"status": "ok"}
+
+    @app.get("/ready")
+    async def ready(request: Request) -> JSONResponse:
+        """Readiness: does this instance reach Redis? Public, like /health (spec 008 RF-10).
+
+        The PING goes through the circuit (plan-D7): while it is open the answer is
+        503 without touching Redis, and a hung Redis costs at most one timeout.
+        Never calls Dia: a third party must not mark every instance as not ready.
+        """
+        res = resources(request.app)
+        try:
+            await res.circuit.call(lambda: res.redis.ping())
+        except RedisError:
+            # The circuit already warned (spec-D5).
+            logger.debug("redis unavailable op=ready.ping")
+            return JSONResponse(
+                status_code=503, content={"status": "unavailable", "redis": "unreachable"}
+            )
+        return JSONResponse(content={"status": "ready", "redis": "ok"})
 
     return app
 

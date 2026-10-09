@@ -13,6 +13,7 @@ from starlette.applications import Starlette
 from app.core.config import Settings
 from app.services.outbound import OutboundGate
 from app.services.postal_code_sessions import PostalCodeSessions
+from app.services.redis_circuit import RedisCircuitBreaker
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class AppResources:
 
     settings: Settings
     redis: Redis
+    # Shared by every use of Redis (spec 008 RF-3).
+    circuit: RedisCircuitBreaker
     # One Dia session per postal code, each with its own HTTP client (spec 002).
     sessions: PostalCodeSessions
     # Every request to Dia goes through it: cooldown and global limit (spec 003).

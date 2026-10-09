@@ -7,17 +7,55 @@ codes, from reaching Dia at once.
 A sliding window over a sorted set, as in Alcampo (its spec 008 plan-D3): a
 fixed window lets through twice the limit around its boundary, the very burst
 to avoid. One member per request, scored with its timestamp (plan-D2).
+
+Without Redis each limiter falls back to a local window with the same limit and
+window (spec 008 RF-7, plan-D6): coordination between instances is lost, but no
+process can burst. Each limiter is built once per process (`lifespan`), so it
+owns its local window.
 """
 
+import logging
 import time
 import uuid
+from collections import deque
 from collections.abc import Callable
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 from app.exceptions import OutboundRateLimitedError
+from app.services.redis_circuit import RedisCircuitBreaker
 
 Clock = Callable[[], float]
+
+logger = logging.getLogger(__name__)
+
+
+class LocalRateLimiter:
+    """In-process sliding window used while Redis is unavailable."""
+
+    def __init__(self, *, name: str, limit: int, window_seconds: int) -> None:
+        self._name = name
+        self._limit = limit
+        self._window = window_seconds
+        self._sent: deque[tuple[float, str]] = deque()
+
+    def acquire(self, *, now: float, slot: str) -> None:
+        # Same boundary as ZREMRANGEBYSCORE -inf now-window: an entry exactly
+        # `window` seconds old has left the window.
+        while self._sent and self._sent[0][0] <= now - self._window:
+            self._sent.popleft()
+        if len(self._sent) >= self._limit:
+            raise OutboundRateLimitedError(f"outbound limit reached: {self._name}")
+        self._sent.append((now, slot))
+
+    def release(self, slot: str) -> bool:
+        """Give `slot` back; `False` if this window does not hold it."""
+        for entry in self._sent:
+            if entry[1] == slot:
+                self._sent.remove(entry)
+                return True
+        return False
 
 
 class RateLimiter:
@@ -32,6 +70,7 @@ class RateLimiter:
         limit: int,
         window_seconds: int,
         now: Clock = time.time,
+        circuit: RedisCircuitBreaker | None = None,
     ) -> None:
         self._redis = redis
         self._key = key
@@ -39,6 +78,9 @@ class RateLimiter:
         self._limit = limit
         self._window = window_seconds
         self._now = now
+        # Production passes the process's circuit; without one, Redis is always tried.
+        self._circuit = circuit if circuit is not None else RedisCircuitBreaker()
+        self._local = LocalRateLimiter(name=name, limit=limit, window_seconds=window_seconds)
 
     @property
     def name(self) -> str:
@@ -66,6 +108,28 @@ class RateLimiter:
             return ""
         now = self._now()
         member = uuid.uuid4().hex
+        try:
+            await self._circuit.call(lambda: self._acquire_in_redis(now, member))
+        except RedisError:
+            # The circuit already warned (spec 008 spec-D5).
+            logger.debug("redis unavailable op=rate_limit.acquire limit=%s", self._name)
+            self._local.acquire(now=now, slot=member)
+        return member
+
+    async def release(self, slot: str) -> None:
+        """Give back a slot taken by `acquire` (no-op for `""`).
+
+        A slot taken locally goes back locally; one taken in Redis is left to
+        expire with the window if Redis is gone meanwhile (spec 008 plan-D6).
+        """
+        if not slot or self._local.release(slot):
+            return
+        try:
+            await self._circuit.call(lambda: self._redis.zrem(self._key, slot))
+        except RedisError:
+            logger.debug("redis unavailable op=rate_limit.release limit=%s", self._name)
+
+    async def _acquire_in_redis(self, now: float, member: str) -> None:
         async with self._redis.pipeline(transaction=True) as pipe:
             # An entry exactly `window` seconds old has left the window.
             pipe.zremrangebyscore(self._key, "-inf", now - self._window)
@@ -78,9 +142,3 @@ class RateLimiter:
             # would keep the limit exhausted forever.
             await self._redis.zrem(self._key, member)
             raise OutboundRateLimitedError(f"outbound limit reached: {self._name}")
-        return member
-
-    async def release(self, slot: str) -> None:
-        """Give back a slot taken by `acquire` (no-op for `""`)."""
-        if slot:
-            await self._redis.zrem(self._key, slot)

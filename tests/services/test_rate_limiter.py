@@ -1,8 +1,12 @@
+import logging
+
 import pytest
 from fakeredis import FakeAsyncRedis
 
 from app.exceptions import OutboundRateLimitedError
-from app.services.rate_limiter import RateLimiter
+from app.services.rate_limiter import LocalRateLimiter, RateLimiter
+from app.services.redis_circuit import RedisCircuitBreaker
+from tests.redis_doubles import DOWN, HUNG, BrokenRedis, CountingBrokenRedis
 
 
 class Clock:
@@ -99,3 +103,107 @@ async def test_the_refusal_names_the_limit(redis: FakeAsyncRedis) -> None:
 
     with pytest.raises(OutboundRateLimitedError, match="test"):
         await rate.acquire()
+
+
+# --- Without Redis (spec 008 RF-7, plan-D6) ---
+
+
+def broken_limiter(redis: object, clock: Clock, *, limit: int = 2) -> RateLimiter:
+    return RateLimiter(
+        redis,
+        key="ratelimit:t",
+        name="test",
+        limit=limit,
+        window_seconds=60,
+        now=clock,
+        circuit=RedisCircuitBreaker(open_seconds=10, now=clock),
+    )
+
+
+def test_the_local_window_has_the_same_boundary_as_redis() -> None:
+    # Same as ZREMRANGEBYSCORE -inf now-window: exactly `window` old has left.
+    local = LocalRateLimiter(name="test", limit=1, window_seconds=60)
+    local.acquire(now=1000.0, slot="a")
+
+    with pytest.raises(OutboundRateLimitedError, match="outbound limit reached: test"):
+        local.acquire(now=1059.9, slot="b")
+    local.acquire(now=1060.0, slot="c")
+
+
+@pytest.mark.parametrize("error", [DOWN, HUNG], ids=["down", "hung"])
+async def test_without_redis_the_limit_still_holds_locally(
+    error: Exception, caplog: pytest.LogCaptureFixture
+) -> None:
+    clock = Clock()
+    rate = broken_limiter(BrokenRedis(error), clock)
+    caplog.set_level(logging.DEBUG)
+
+    await rate.acquire()
+    await rate.acquire()
+    with pytest.raises(OutboundRateLimitedError, match="outbound limit reached: test"):
+        await rate.acquire()
+
+    clock.now += 60
+    await rate.acquire()  # the window slides locally too
+    fallbacks = {r.getMessage() for r in caplog.records if r.name == "app.services.rate_limiter"}
+    assert fallbacks == {"redis unavailable op=rate_limit.acquire limit=test"}
+    assert all(
+        r.levelno == logging.DEBUG for r in caplog.records if r.name == "app.services.rate_limiter"
+    )
+
+
+async def test_a_local_refusal_does_not_consume_the_quota() -> None:
+    clock = Clock()
+    rate = broken_limiter(BrokenRedis(DOWN), clock, limit=1)
+    await rate.acquire()
+    for _ in range(3):
+        with pytest.raises(OutboundRateLimitedError):
+            await rate.acquire()
+
+    clock.now += 60
+    await rate.acquire()
+
+
+async def test_a_local_slot_is_given_back_locally() -> None:
+    redis = CountingBrokenRedis(DOWN)
+    rate = broken_limiter(redis, Clock(), limit=1)
+    slot = await rate.acquire()
+
+    await rate.release(slot)
+
+    await rate.acquire()  # the slot was free again
+    assert redis.attempts == 1  # only the first acquire tried Redis: the circuit opened
+
+
+async def test_releasing_a_redis_slot_with_redis_down_does_not_fail() -> None:
+    # The slot expires with the window (plan-D6).
+    clock = Clock()
+    redis = SwitchableBroken()
+    rate = broken_limiter(redis, clock)
+    slot = await rate.acquire()
+    redis.down = True
+
+    await rate.release(slot)
+
+
+async def test_zero_disables_the_limit_without_redis_too() -> None:
+    redis = CountingBrokenRedis(DOWN)
+    rate = broken_limiter(redis, Clock(), limit=0)
+
+    for _ in range(5):
+        await rate.release(await rate.acquire())
+
+    assert redis.attempts == 0
+
+
+class SwitchableBroken:
+    """A fakeredis that can go down."""
+
+    def __init__(self) -> None:
+        self.fake = FakeAsyncRedis()
+        self.down = False
+
+    def __getattr__(self, name: str) -> object:
+        if self.down:
+            raise DOWN
+        return getattr(self.fake, name)

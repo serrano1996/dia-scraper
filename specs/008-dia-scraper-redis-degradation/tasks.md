@@ -36,14 +36,15 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 - **GREEN:** `LocalCooldown` y el respaldo en `cooldown.py`.
 - **RF:** RF-6, RF-8
 
-### [ ] T5 — Límites sin Redis
+### [x] T5 — Límites sin Redis
 - **RED:** `test_rate_limiter.py`: sin Redis, `limit` admitidas y la siguiente rechazada; una entrada de exactamente `window` segundos ya no cuenta; `release` de un slot local lo libera; `release` con Redis caído no lanza; `limit=0` no toca nada (plan-D6).
 - **GREEN:** `LocalRateLimiter` y el respaldo en `rate_limiter.py`.
 - **RF:** RF-7
 
-### [ ] T6 — Cableado y `/ready`
-- **RED:** `tests/integration/test_redis_degradation.py`: búsqueda `200` con `DOWN` y `HUNG` sin `ERROR`, `/health` `200`; tras el primer fallo la segunda búsqueda no toca Redis (`CountingBrokenRedis`), un único `WARNING` del circuito; sin Redis, con `DIA_RATE_LIMIT=2` (el `PUT` y el `GET` de la primera) la segunda búsqueda distinta da `502`, y tras un `403` de Akamai la siguiente da `502` sin llamar a Dia. `tests/integration/test_ready.py`: `200`/`503` con los cuerpos de RF-10, sin `X-API-Key`, sin rutas de Dia llamadas (plan-D7).
+### [x] T6 — Cableado y `/ready`
+- **RED:** `tests/integration/test_redis_degradation.py`: búsqueda `200` con `DOWN` y `HUNG` sin `ERROR`, `/health` `200`; tras el primer fallo la segunda búsqueda no toca Redis (`CountingBrokenRedis`), un único `WARNING` del circuito; sin Redis, con `DIA_RATE_LIMIT=1` la segunda búsqueda distinta da `502`, y tras un `403` de Akamai la siguiente da `502` sin llamar a Dia. `tests/integration/test_ready.py`: `200`/`503` con los cuerpos de RF-10, sin `X-API-Key`, sin rutas de Dia llamadas (plan-D7).
 - **GREEN:** `main.py` (circuito en el `lifespan`, pasado a la puerta, los limitadores y `AppResources`; `/ready`), `state.py`, `dependencies.py`.
+- **Nota:** los tests usan el CP 28041, el predeterminado de Dia: su sesión no hace `PUT`, así que cada búsqueda es una sola petición y basta `DIA_RATE_LIMIT=1` (el borrador decía 2 suponiendo un `PUT`). En el RED, cuatro tests de búsqueda ya pasaban: los respaldos de T3–T5 funcionan con el circuito desactivado por defecto; fallaban los que exigen un único circuito compartido y `/ready`.
 - **RF:** RF-3, RF-9, RF-10, H1, H2
 
 ### [ ] T7 — Docs
