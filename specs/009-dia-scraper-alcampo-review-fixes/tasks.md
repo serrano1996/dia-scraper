@@ -29,3 +29,5 @@ Formato de commit: `<tipo>(009-dia-scraper-alcampo-review-fixes): <descripción 
 - **Hacer:** `Event` en el test del circuito (refactor de test: debe seguir en verde, y en rojo si se quita el indicador `_probing`); README: la normalización de la redacción y la limitación conocida de uvicorn.
 - **RF:** RF-3, RF-4
 - **Comprobado:** con el `Event`, el test pasa; quitando el indicador `_probing` del circuito falla (mutación deshecha). README: la redacción por subcadena y separadores (la frase seguía nombrando solo tres nombres exactos) y la limitación de uvicorn.
+
+- **CI en GitHub (2026-10-09, run 37916896489, tras el push de `913d6ba`):** ✅ `success`, todos los pasos en verde. Con Python 3.11 pasan **655 tests en 9,78 s**, sin saltarse ninguno: los de `lock.sh` con `PATH` vacío también corren en Linux.
