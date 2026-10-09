@@ -223,3 +223,12 @@ def test_near_miss_secret_names_are_hidden_too(name: str) -> None:
 @pytest.mark.parametrize("name", ["postal_code", "term", "page", "page_size"])
 def test_the_apis_own_params_are_never_hidden(name: str) -> None:
     assert redact_params([(name, "v")]) == [(name, "v")]
+
+
+# --- Spec 009 RF-1: separators and Unicode variants (F1) ---
+
+
+@pytest.mark.parametrize("name", ["to.ken", "pa_ss", "a pi key", "\uff2b\uff25\uff39", "K.E-Y"])
+def test_separators_and_unicode_variants_do_not_hide_a_marker(name: str) -> None:
+    # Before: only "-" was normalised, and fullwidth letters were not folded.
+    assert redact_params([(name, "s3cr3t")]) == [(name, "***")]

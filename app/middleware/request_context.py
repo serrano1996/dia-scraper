@@ -6,8 +6,10 @@ validation. A pure ASGI middleware, as in alcampo-scraper (plan-D5):
 """
 
 import logging
+import re
 import time
 import traceback
+import unicodedata
 import uuid
 
 from starlette.datastructures import MutableHeaders, QueryParams
@@ -23,11 +25,13 @@ MAX_PARAMS_LOGGED = 500
 
 # A query param whose name contains any of these is hidden on the start line:
 # a client sending its key in the URL by mistake must not leak it into our logs
-# (spec 005 RF-15, plan-D6). Judged by the normalised name (trimmed, lower case,
-# "-" as "_"), never by the value; broader than the five names of RF-15 after the
-# review (T9) found `api-key`, `access_token`, `password` and the like leaking.
+# (spec 005 RF-15, plan-D6). Judged by the normalised name (NFKC, case-folded,
+# without "-", "_", "." or spaces; spec 009 RF-1), never by the value; broader
+# than the five names of RF-15 after the review (T9) found `api-key`,
+# `access_token`, `password` and the like leaking.
 # None of the API's own params (postal_code, term, page, page_size) matches.
 SECRET_NAME_MARKERS = ("key", "token", "secret", "auth", "pass")
+_SEPARATORS = re.compile(r"[-_.\s]")
 REDACTED = "***"
 
 logger = logging.getLogger(__name__)
@@ -110,5 +114,7 @@ def redact_params(params: list[tuple[str, str]]) -> list[tuple[str, str]]:
 
 
 def _is_secret_name(name: str) -> bool:
-    normalised = name.strip().lower().replace("-", "_")
-    return any(marker in normalised for marker in SECRET_NAME_MARKERS)
+    # NFKC folds compatibility forms (fullwidth letters), casefold() any case, and
+    # separators go, so "to.ken" or "pa_ss" still contain their marker (spec 009 RF-1).
+    folded = unicodedata.normalize("NFKC", name).casefold()
+    return any(marker in _SEPARATORS.sub("", folded) for marker in SECRET_NAME_MARKERS)
