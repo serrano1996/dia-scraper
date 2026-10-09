@@ -20,7 +20,7 @@ Formato de commit: `<tipo>(009-dia-scraper-alcampo-review-fixes): <descripción 
 - **GREEN:** `_is_secret_name` (plan §1).
 - **RF:** RF-1
 
-### [ ] T2 — `lock.sh` rechaza argumentos de más (F2)
+### [x] T2 — `lock.sh` rechaza argumentos de más (F2)
 - **RED:** `test_lockfiles.py`: `--upgrade extra` y `--upgrade; false` → 2, con `PATH` vacío (RNF-2).
 - **GREEN:** `lock.sh` (plan-D1).
 - **RF:** RF-2

@@ -14,13 +14,17 @@
 # (spec-D2, plan-D1). Contacts PyPI only. Needs Docker.
 set -eu
 
-cd "$(dirname "$0")/.."
-
-# Only the one option we know: anything else would end up inside `sh -c`.
+# Only the one option we know, checked before any other command and with shell
+# builtins only: anything else would end up inside `sh -c` (spec 009 RF-2).
+if [ "$#" -gt 1 ]; then
+    echo "usage: scripts/lock.sh [--upgrade]" >&2; exit 2
+fi
 case "${1:-}" in
     "" | --upgrade) UPGRADE="${1:-}" ;;
     *) echo "usage: scripts/lock.sh [--upgrade]" >&2; exit 2 ;;
 esac
+
+cd "$(dirname "$0")/.."
 
 # Git Bash on Windows rewrites /src-like paths and needs a Windows path to mount.
 if pwd -W >/dev/null 2>&1; then
