@@ -92,3 +92,5 @@ Revisión adversarial de `c1f2b47..HEAD` antes del PR: 0 CRITICAL, 4 WARNING, 4 
   - El `aclose` de Redis al apagar no va por el circuito: comprobado que `aclose()` no lanza tras un fallo contra un puerto muerto (`127.0.0.1:1`).
   - El `.venv` local es Python 3.14, mientras que la CI y la imagen usan 3.11: los tests pasan en ambos.
 
+- **CI en GitHub (2026-10-09, run 37902144814, tras el push de `60df3da`):** ✅ `success`, todos los pasos en verde. Con Python 3.11 pasan **648 tests en 7,28 s**, incluidos el del socket mudo y los de concurrencia del circuito. También pasa `docker build`.
+
