@@ -51,6 +51,20 @@ Formato de commit: `<tipo>(008-dia-scraper-redis-degradation): <descripción en 
 - **Hacer:** README: qué pasa sin Redis (caches saltadas, protecciones locales, tráfico `instancias × límite`), `/ready` frente a `/health`, las dos variables. Dar al usuario las líneas de `.env.example` (`REDIS_TIMEOUT_SECONDS=2`, `REDIS_CIRCUIT_OPEN_SECONDS=10`).
 - **RF:** RNF-4
 
-### [ ] T8 — Verificación manual con `docker compose`
+### [x] T8 — Verificación manual con `docker compose`
 - **Hacer:** con el daemon, el guion de la spec §9: búsqueda con Redis, `docker compose stop redis`, búsqueda (`200`, tiempo acotado), `/ready` `503`, el `WARNING` del circuito en los logs y ningún `ERROR`; `docker compose start redis`, `/ready` `200`. Con 1–2 búsquedas reales a Dia, despacio. Anotar el resultado aquí.
 - **RF:** criterios de finalización
+
+- **Resultado (2026-10-09, imagen de `a4ac0fe`, CP 28041):**
+
+  | Paso | Resultado |
+  |---|---|
+  | Búsqueda `leche` con Redis | `200` en 0,74 s, 50 productos; queda `search:28041:leche:1:50`; `/ready` `200` |
+  | `docker compose stop redis` y búsqueda `agua` | `200` en 0,48 s; `/ready` `503`; `/health` `200` |
+  | Búsqueda `leche` otra vez | `200` en 0,61 s, desde Dia (sin cache) |
+  | Logs | un único `WARNING redis circuit open seconds=10 error=ConnectionError`; ningún `ERROR` y ningún `Future exception was never retrieved` (R1 no aparece) |
+  | `/ready` pasado el circuito, Redis aún parado | `503` en 2,04 s: `TimeoutError` al resolver `redis`, acotado por `REDIS_TIMEOUT_SECONDS`; el circuito se reabre con su `WARNING` |
+  | `docker compose start redis` y `/ready` | `200` (0,04 s); `INFO redis circuit closed` |
+
+  Fueron **3 búsquedas reales** a Dia, una más de las 1–2 previstas: la tercera comprobaba que sin Redis no hay cache. Sin `.env` en el repo, la API recibió `DIA_BASE_URL` y un token aleatorio de un solo uso por un override temporal de compose fuera del repo, borrado al terminar.
+
